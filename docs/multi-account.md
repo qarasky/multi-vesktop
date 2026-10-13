@@ -57,6 +57,19 @@ keep working). It now loads the **tab strip** instead of Discord:
 | `src/preload/tabStrip.ts` | `contextBridge` API for the strip |
 | `static/views/tabs.html` | The strip UI (self-contained) |
 
+## Sites: more than one view per account
+
+Each account owns one view per **site**, all sharing that account's session partition:
+
+| site | what | Vencord? |
+| --- | --- | --- |
+| `discord` | `discord.com/app` | yes |
+| `topgg` | `top.gg` | no (plain page) |
+
+Because they share the partition, **top.gg's "Log in with Discord" sees that account's Discord login** — so
+top.gg is authenticated as the same account. The strip shows two rows: accounts on top, their top.gg views
+below. Discord views are created eagerly; other sites lazily on first activation.
+
 ## Status / roadmap
 
 - [x] Account store + session partitions
@@ -64,9 +77,12 @@ keep working). It now loads the **tab strip** instead of Discord:
 - [x] Tab strip UI + IPC
 - [x] Per-view Discord behaviours (external links, popouts, spellcheck context menu, devtools hooks)
 - [x] Per-account media/screen-share handlers
+- [x] Account identity in tabs (avatar + display name + unread)
+- [x] Extra per-account sites sharing the partition (top.gg)
+- [x] Tab reordering by drag
+- [x] File logging (12h sessions, 3-day retention)
 - [ ] Unread badge aggregation into dock/tray
 - [ ] "Primary account" concept for arRPC / voice
-- [ ] Tab reordering by drag
 - [ ] Reconnect a crashed view from the tab menu
 
 ## Known costs

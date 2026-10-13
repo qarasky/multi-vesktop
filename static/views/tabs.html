@@ -2,7 +2,10 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src https: data:;" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src https: data:;"
+        />
         <title>Accounts</title>
         <style>
             :root {
@@ -13,7 +16,8 @@
                 --fg: #dbdee1;
                 --fg-dim: #949ba4;
                 --badge: #f23f43;
-                --strip-height: 40px;
+                --row1: 34px;
+                --row2: 30px;
             }
             @media (prefers-color-scheme: light) {
                 :root {
@@ -33,7 +37,7 @@
             html,
             body {
                 margin: 0;
-                height: var(--strip-height);
+                height: calc(var(--row1) + var(--row2));
                 overflow: hidden;
                 background: transparent;
                 font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -43,26 +47,50 @@
                 -webkit-user-select: none;
             }
 
-            #bar {
+            img,
+            .avatar {
+                -webkit-user-drag: none;
+                user-select: none;
+            }
+
+            .row {
                 display: flex;
                 align-items: center;
+                justify-content: center;
                 gap: 4px;
-                height: var(--strip-height);
                 padding: 0 8px;
                 background: var(--bar-bg);
+                overflow: hidden;
+            }
+
+            #row1 {
+                height: var(--row1);
                 border-bottom: 1px solid var(--bar-border);
+            }
+
+            #row2 {
+                height: var(--row2);
+                border-bottom: 1px solid var(--bar-border);
+            }
+
+            #row1.darwin {
+                padding-left: 78px;
+            }
+
+            #row1 {
                 -webkit-app-region: drag;
             }
 
-            #bar.darwin {
-                padding-left: 78px;
+            #row1 .tab,
+            #row1 button {
+                -webkit-app-region: no-drag;
             }
 
             #tabs {
                 display: flex;
                 align-items: center;
+                justify-content: center;
                 gap: 4px;
-                flex: 1;
                 min-width: 0;
                 overflow: hidden;
             }
@@ -71,14 +99,13 @@
                 display: flex;
                 align-items: center;
                 gap: 7px;
-                height: 28px;
+                height: 26px;
                 max-width: 190px;
-                min-width: 92px;
+                min-width: 84px;
                 padding: 0 8px;
                 border-radius: 6px;
                 cursor: default;
                 color: var(--fg-dim);
-                -webkit-app-region: no-drag;
                 position: relative;
                 transition: background 0.1s ease;
             }
@@ -88,20 +115,27 @@
                 color: var(--fg);
             }
 
+            .tab.current {
+                color: var(--fg);
+                box-shadow: inset 0 -2px 0 0 var(--accent, #5865f2);
+            }
+
             .tab.active {
                 background: var(--tab-active);
                 color: var(--fg);
+                box-shadow: inset 0 -2px 0 0 var(--accent, #5865f2);
             }
 
-            .tab.active::after {
-                content: "";
-                position: absolute;
-                left: 8px;
-                right: 8px;
-                bottom: -6px;
-                height: 2px;
-                border-radius: 2px;
-                background: var(--accent, #5865f2);
+            .tab.dragging {
+                opacity: 0.4;
+            }
+
+            .tab.drop-before {
+                box-shadow: inset 2px 0 0 0 var(--accent, #5865f2);
+            }
+
+            .tab.drop-after {
+                box-shadow: inset -2px 0 0 0 var(--accent, #5865f2);
             }
 
             .avatar {
@@ -110,7 +144,6 @@
                 border-radius: 50%;
                 flex: 0 0 auto;
                 object-fit: cover;
-                background: #5865f2;
             }
 
             .label {
@@ -119,19 +152,6 @@
                 white-space: nowrap;
                 flex: 1;
                 min-width: 0;
-            }
-
-            .rename {
-                flex: 1;
-                min-width: 0;
-                height: 20px;
-                padding: 0 4px;
-                border: 1px solid var(--accent, #5865f2);
-                border-radius: 4px;
-                background: var(--card, #2b2d31);
-                color: var(--fg);
-                font: inherit;
-                outline: none;
             }
 
             .badge {
@@ -152,8 +172,6 @@
                 flex: 0 0 auto;
                 width: 14px;
                 text-align: center;
-                font-size: 12px;
-                line-height: 1;
             }
 
             .close {
@@ -180,20 +198,7 @@
                 background: rgba(255, 255, 255, 0.12);
             }
 
-            .tab.dragging {
-                opacity: 0.4;
-            }
-
-            .tab.drop-before {
-                box-shadow: inset 2px 0 0 0 var(--accent, #5865f2);
-            }
-
-            .tab.drop-after {
-                box-shadow: inset -2px 0 0 0 var(--accent, #5865f2);
-            }
-
             #add {
-                -webkit-app-region: no-drag;
                 width: 26px;
                 height: 26px;
                 flex: 0 0 auto;
@@ -211,6 +216,39 @@
                 color: var(--fg);
             }
 
+            .site-tab {
+                height: 24px;
+                min-width: 0;
+                max-width: 190px;
+                font-size: 11px;
+                opacity: 0.85;
+            }
+
+            .site-tab.active,
+            .site-tab.current {
+                opacity: 1;
+            }
+
+            .site-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 3px;
+                flex: 0 0 auto;
+            }
+
+            .rename {
+                flex: 1;
+                min-width: 0;
+                height: 20px;
+                padding: 0 4px;
+                border: 1px solid var(--accent, #5865f2);
+                border-radius: 4px;
+                background: var(--card, #2b2d31);
+                color: var(--fg);
+                font: inherit;
+                outline: none;
+            }
+
             .error-banner {
                 position: fixed;
                 inset: 0;
@@ -219,14 +257,16 @@
                 justify-content: center;
                 background: var(--bar-bg);
                 color: var(--fg);
-                -webkit-app-region: no-drag;
             }
         </style>
     </head>
     <body>
-        <div id="bar">
+        <div class="row" id="row1">
             <div id="tabs"></div>
             <button id="add" title="Add account">＋</button>
+        </div>
+        <div class="row" id="row2">
+            <div id="sites"></div>
         </div>
 
         <script>
@@ -236,14 +276,16 @@
                 document.body.innerHTML = '<div class="error-banner">Tab strip failed to initialise (preload missing).</div>';
             } else {
                 const tabsEl = document.getElementById("tabs");
+                const sitesEl = document.getElementById("sites");
                 const addEl = document.getElementById("add");
 
-                if (api.platform === "darwin") {
-                    document.getElementById("bar").classList.add("darwin");
-                }
+                if (api.platform === "darwin") document.getElementById("row1").classList.add("darwin");
 
-                let state = { activeId: null, tabs: [] };
+                let state = { activeKey: null, activeAccountId: null, tabs: [] };
                 let dragId = null;
+
+                const siteOf = (tab, site) => (tab.sites && tab.sites[site]) || {};
+                const initial = s => (s || "?").trim().charAt(0).toUpperCase() || "?";
 
                 function clearDropMarkers() {
                     for (const el of tabsEl.querySelectorAll(".drop-before, .drop-after")) {
@@ -251,147 +293,45 @@
                     }
                 }
 
-                function initial(label) {
-                    return (label || "?").trim().charAt(0).toUpperCase() || "?";
-                }
+                function makeAvatar(tab, size) {
+                    const site = siteOf(tab, "discord");
+                    const image = site.avatarUrl || site.favicon;
 
-                function render() {
-                    tabsEl.textContent = "";
-
-                    for (const tab of state.tabs) {
-                        const el = document.createElement("div");
-                        el.className = "tab" + (tab.id === state.activeId ? " active" : "");
-                        el.title = tab.title || tab.displayName || tab.label;
-                        el.style.setProperty("--accent", tab.color || "#5865f2");
-
-                        const image = tab.avatarUrl || tab.favicon;
-                        const avatar = image ? document.createElement("img") : document.createElement("div");
-                        avatar.className = "avatar";
-                        if (image) {
-                            avatar.src = image;
-                            avatar.onerror = () => {
-                                avatar.replaceWith(makeFallbackAvatar(tab, el));
-                            };
-                        } else {
-                            Object.assign(avatar.style, {
-                                background: tab.color || "#5865f2",
-                                color: "#fff",
-                                fontSize: "10px",
-                                fontWeight: "700",
-                                lineHeight: "16px",
-                                textAlign: "center"
-                            });
-                            avatar.textContent = initial(tab.label);
-                        }
-                        el.appendChild(avatar);
-
-                        const label = document.createElement("span");
-                        label.className = "label";
-                        label.textContent = tab.displayName || tab.label;
-                        el.appendChild(label);
-
-                        if (tab.crashed) {
-                            const icon = document.createElement("span");
-                            icon.className = "icon";
-                            icon.textContent = "⚠";
-                            icon.title = "This account crashed";
-                            el.appendChild(icon);
-                        } else if (tab.audible) {
-                            const icon = document.createElement("span");
-                            icon.className = "icon";
-                            icon.textContent = "🔊";
-                            icon.title = "Playing audio";
-                            el.appendChild(icon);
-                        }
-
-                        if (tab.unread > 0) {
-                            const badge = document.createElement("span");
-                            badge.className = "badge";
-                            badge.textContent = tab.unread > 99 ? "99+" : String(tab.unread);
-                            el.appendChild(badge);
-                        }
-
-                        const close = document.createElement("button");
-                        close.className = "close";
-                        close.textContent = "×";
-                        close.title = "Close account";
-                        close.addEventListener("click", e => {
-                            e.stopPropagation();
-                            api.close(tab.id).then(refresh);
-                        });
-                        el.appendChild(close);
-
-                        el.addEventListener("click", () => api.select(tab.id));
-                        el.addEventListener("auxclick", e => {
-                            if (e.button === 1) api.close(tab.id).then(refresh);
-                        });
-                        el.addEventListener("dblclick", e => {
-                            e.stopPropagation();
-                            startRename(label, tab.id, tab.label);
-                        });
-                        el.addEventListener("contextmenu", e => {
-                            e.preventDefault();
-                            api.openDevtools(tab.id);
-                        });
-
-                        el.draggable = true;
-                        el.addEventListener("dragstart", e => {
-                            dragId = tab.id;
-                            e.dataTransfer.effectAllowed = "move";
-                            e.dataTransfer.setData("text/plain", tab.id);
-                            el.classList.add("dragging");
-                        });
-                        el.addEventListener("dragend", () => {
-                            dragId = null;
-                            el.classList.remove("dragging");
-                            clearDropMarkers();
-                        });
-                        el.addEventListener("dragover", e => {
-                            if (!dragId || dragId === tab.id) return;
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                            clearDropMarkers();
-                            const rect = el.getBoundingClientRect();
-                            el.classList.add(e.clientX > rect.left + rect.width / 2 ? "drop-after" : "drop-before");
-                        });
-                        el.addEventListener("drop", e => {
-                            e.preventDefault();
-                            const after = el.classList.contains("drop-after");
-                            clearDropMarkers();
-                            if (!dragId || dragId === tab.id) return;
-
-                            // index among the other tabs, matching moveAccount()'s post-removal splice
-                            const order = state.tabs.map(t => t.id);
-                            const rest = order.filter(id => id !== dragId);
-                            const target = rest.indexOf(tab.id);
-                            if (target === -1) return;
-
-                            api.move(dragId, target + (after ? 1 : 0));
-                            dragId = null;
-                        });
-
-                        tabsEl.appendChild(el);
+                    if (image) {
+                        const img = document.createElement("img");
+                        img.className = "avatar";
+                        img.src = image;
+                        img.draggable = false;
+                        img.onerror = () => img.replaceWith(makeInitialAvatar(tab, size));
+                        return img;
                     }
+                    return makeInitialAvatar(tab, size);
                 }
 
-                function makeFallbackAvatar(tab, parent) {
+                function makeInitialAvatar(tab, size) {
                     const div = document.createElement("div");
                     div.className = "avatar";
                     Object.assign(div.style, {
                         background: tab.color || "#5865f2",
                         color: "#fff",
-                        fontSize: "10px",
+                        fontSize: size + "px",
                         fontWeight: "700",
                         lineHeight: "16px",
                         textAlign: "center"
                     });
-                    div.textContent = initial(tab.displayName || tab.label);
+                    div.textContent = initial(siteOf(tab, "discord").displayName || tab.label);
                     return div;
                 }
 
-                async function refresh() {
-                    state = api.getState();
-                    render();
+                function makeBadge(count) {
+                    const badge = document.createElement("span");
+                    badge.className = "badge";
+                    badge.textContent = count > 99 ? "99+" : String(count);
+                    return badge;
+                }
+
+                function select(key) {
+                    api.select(key);
                 }
 
                 function startRename(labelEl, id, current) {
@@ -416,7 +356,143 @@
                     });
                     input.addEventListener("blur", () => commit(true));
                     input.addEventListener("click", e => e.stopPropagation());
-                    input.addEventListener("dblclick", e => e.stopPropagation());
+                }
+
+                function render() {
+                    tabsEl.textContent = "";
+                    sitesEl.textContent = "";
+
+                    for (const tab of state.tabs) {
+                        const discord = siteOf(tab, "discord");
+                        const key = tab.id + ":discord";
+
+                        const el = document.createElement("div");
+                        el.className = "tab";
+                        if (state.activeKey === key) el.classList.add("active");
+                        else if (state.activeAccountId === tab.id) el.classList.add("current");
+                        el.title = discord.title || discord.displayName || tab.label;
+                        el.style.setProperty("--accent", tab.color || "#5865f2");
+                        el.draggable = true;
+
+                        el.appendChild(makeAvatar(tab, 10));
+
+                        const label = document.createElement("span");
+                        label.className = "label";
+                        label.textContent = discord.displayName || tab.label;
+                        el.appendChild(label);
+
+                        if (discord.crashed) {
+                            const icon = document.createElement("span");
+                            icon.className = "icon";
+                            icon.textContent = "⚠";
+                            icon.title = "This account crashed";
+                            el.appendChild(icon);
+                        } else if (discord.audible) {
+                            const icon = document.createElement("span");
+                            icon.className = "icon";
+                            icon.textContent = "🔊";
+                            el.appendChild(icon);
+                        }
+
+                        if (discord.unread > 0) el.appendChild(makeBadge(discord.unread));
+
+                        const close = document.createElement("button");
+                        close.className = "close";
+                        close.textContent = "×";
+                        close.title = "Close account";
+                        close.addEventListener("click", e => {
+                            e.stopPropagation();
+                            api.close(tab.id).then(refresh);
+                        });
+                        el.appendChild(close);
+
+                        el.addEventListener("click", () => select(key));
+                        el.addEventListener("auxclick", e => {
+                            if (e.button === 1) api.close(tab.id).then(refresh);
+                        });
+                        el.addEventListener("dblclick", e => {
+                            e.stopPropagation();
+                            startRename(label, tab.id, tab.label);
+                        });
+                        el.addEventListener("contextmenu", e => {
+                            e.preventDefault();
+                            api.openDevtools(key);
+                        });
+
+                        el.addEventListener("dragstart", e => {
+                            dragId = tab.id;
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", tab.id);
+                            el.classList.add("dragging");
+                        });
+                        el.addEventListener("dragend", () => {
+                            dragId = null;
+                            el.classList.remove("dragging");
+                            clearDropMarkers();
+                            // apply any state updates we skipped while dragging
+                            render();
+                        });
+                        el.addEventListener("dragover", e => {
+                            if (!dragId || dragId === tab.id) return;
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            clearDropMarkers();
+                            const rect = el.getBoundingClientRect();
+                            el.classList.add(e.clientX > rect.left + rect.width / 2 ? "drop-after" : "drop-before");
+                        });
+                        el.addEventListener("drop", e => {
+                            e.preventDefault();
+                            const after = el.classList.contains("drop-after");
+                            clearDropMarkers();
+                            if (!dragId || dragId === tab.id) return;
+
+                            // index among the other accounts, matching moveAccount()'s post-removal splice
+                            const rest = state.tabs.map(t => t.id).filter(id => id !== dragId);
+                            const target = rest.indexOf(tab.id);
+                            if (target === -1) return;
+
+                            api.move(dragId, target + (after ? 1 : 0));
+                            dragId = null;
+                        });
+
+                        tabsEl.appendChild(el);
+
+                        // second row: this account's top.gg view
+                        const topgg = siteOf(tab, "topgg");
+                        const siteKey = tab.id + ":topgg";
+
+                        const siteEl = document.createElement("div");
+                        siteEl.className = "tab site-tab";
+                        if (state.activeKey === siteKey) siteEl.classList.add("active");
+                        else if (state.activeAccountId === tab.id) siteEl.classList.add("current");
+                        siteEl.title = `${tab.label} · top.gg`;
+                        siteEl.style.setProperty("--accent", tab.color || "#5865f2");
+
+                        const dot = document.createElement("div");
+                        dot.className = "site-dot";
+                        dot.style.background = tab.color || "#5865f2";
+                        siteEl.appendChild(dot);
+
+                        const siteLabel = document.createElement("span");
+                        siteLabel.className = "label";
+                        siteLabel.textContent = "top.gg";
+                        siteEl.appendChild(siteLabel);
+
+                        if (topgg.unread > 0) siteEl.appendChild(makeBadge(topgg.unread));
+
+                        siteEl.addEventListener("click", () => select(siteKey));
+                        siteEl.addEventListener("contextmenu", e => {
+                            e.preventDefault();
+                            api.openDevtools(siteKey);
+                        });
+
+                        sitesEl.appendChild(siteEl);
+                    }
+                }
+
+                async function refresh() {
+                    state = api.getState();
+                    if (!dragId) render();
                 }
 
                 addEl.addEventListener("click", async () => {
@@ -430,7 +506,8 @@
 
                 api.onState(next => {
                     state = next;
-                    render();
+                    // Never rebuild the DOM mid-drag: it cancels the drag.
+                    if (!dragId) render();
                 });
 
                 refresh();

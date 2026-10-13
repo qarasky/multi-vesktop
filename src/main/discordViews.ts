@@ -4,24 +4,62 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { BrowserWindow, WebContents, WebContentsView } from "electron";
+import { BrowserWindow, shell, type WebContents, WebContentsView } from "electron";
 import { join } from "path";
 import { type Account, type AccountIdentity, accountPartition } from "shared/accounts";
 import { IpcEvents } from "shared/IpcEvents";
 
+import { getAccount, getAccounts } from "./accounts";
 import { setupAccountSession } from "./accountSessions";
 import { setActiveWebContentsGetter } from "./activeView";
-import { BrowserUserAgent } from "./constants";
+import { BrowserUserAgent, DISCORD_HOSTNAMES } from "./constants";
 import { AppEvents } from "./events";
 import { Settings } from "./settings";
 import { updateSplashMessage } from "./splash";
 import { makeWebContentsOpenLinksExternally } from "./utils/makeLinksOpenExternally";
 
-/** Height reserved at the top of the window for the tab strip. */
-export const TAB_STRIP_HEIGHT = 40;
+/**
+ * Each account owns one view per *site*, all sharing that account's session
+ * partition. That is what lets a site like top.gg log in "as" the same account:
+ * the Discord OAuth flow sees the account's Discord cookies because both live
+ * in the same partition.
+ */
+export type SiteId = "discord" | "topgg";
 
-export interface TabView {
+interface SiteDefinition {
+    id: SiteId;
+    label: string;
+    /** Discord gets Vencord injected; other sites are plain web pages. */
+    vencord: boolean;
+    url: (uri?: string) => string;
+}
+
+export const SITES: SiteDefinition[] = [
+    { id: "discord", label: "Discord", vencord: true, url: buildDiscordUrl },
+    { id: "topgg", label: "top.gg", vencord: false, url: () => "https://top.gg" }
+];
+
+const SITE_BY_ID = new Map(SITES.map(s => [s.id, s]));
+
+/** Height reserved at the top of the window for the two-row tab strip. */
+export const TAB_STRIP_HEIGHT = 64;
+
+export const viewKey = (accountId: string, site: SiteId) => `${accountId}:${site}`;
+
+function parseKey(key: string): [string, SiteId] | null {
+    const idx = key.lastIndexOf(":");
+    if (idx === -1) return null;
+
+    const accountId = key.slice(0, idx);
+    const site = key.slice(idx + 1) as SiteId;
+    if (!SITE_BY_ID.has(site)) return null;
+
+    return [accountId, site];
+}
+
+export interface ViewState {
     account: Account;
+    site: SiteId;
     view: WebContentsView;
     title: string;
     unread: number;
@@ -32,10 +70,7 @@ export interface TabView {
     identity?: AccountIdentity;
 }
 
-export interface TabState {
-    id: string;
-    label: string;
-    color?: string;
+export interface SiteState {
     title: string;
     unread: number;
     favicon?: string;
@@ -47,13 +82,21 @@ export interface TabState {
     avatarUrl?: string;
 }
 
+export interface TabState {
+    id: string;
+    label: string;
+    color?: string;
+    sites: Record<string, SiteState>;
+}
+
 export interface TabStatePayload {
-    activeId: string | null;
+    activeKey: string | null;
+    activeAccountId: string | null;
     tabs: TabState[];
 }
 
-const tabs = new Map<string, TabView>();
-let activeId: string | null = null;
+const views = new Map<string, ViewState>();
+let activeKey: string | null = null;
 let win: BrowserWindow | null = null;
 let appLoadedEmitted = false;
 
@@ -66,28 +109,6 @@ export function initDiscordViews(browserWindow: BrowserWindow) {
     browserWindow.on("unmaximize", relayout);
     browserWindow.on("enter-full-screen", relayout);
     browserWindow.on("leave-full-screen", relayout);
-}
-
-export function getTabs(): TabView[] {
-    return [...tabs.values()];
-}
-
-export function getActiveTab(): TabView | null {
-    return activeId ? (tabs.get(activeId) ?? null) : null;
-}
-
-export function getActiveWebContents(): WebContents | null {
-    return getActiveTab()?.view.webContents ?? null;
-}
-
-export function getActiveAccountId(): string | null {
-    return activeId;
-}
-
-export function getTotalUnread(): number {
-    let total = 0;
-    for (const tab of tabs.values()) total += tab.unread;
-    return total;
 }
 
 export function buildDiscordUrl(uri?: string) {
@@ -103,50 +124,98 @@ function parseUnread(title: string) {
     return match ? Number(match[1]) : 0;
 }
 
-export function createView(account: Account, loadUri?: string): TabView {
-    const existing = tabs.get(account.id);
+export function getViews(): ViewState[] {
+    return [...views.values()];
+}
+
+export function getViewByKey(key: string): ViewState | null {
+    return views.get(key) ?? null;
+}
+
+export function getActiveView(): ViewState | null {
+    return activeKey ? (views.get(activeKey) ?? null) : null;
+}
+
+export function getActiveWebContents(): WebContents | null {
+    return getActiveView()?.view.webContents ?? null;
+}
+
+export function getActiveAccountId(): string | null {
+    return activeKey ? (parseKey(activeKey)?.[0] ?? null) : null;
+}
+
+export function getTotalUnread(): number {
+    let total = 0;
+    for (const view of views.values()) total += view.unread;
+    return total;
+}
+
+function ensureView(account: Account, site: SiteId, loadUri?: string): ViewState {
+    const key = viewKey(account.id, site);
+
+    const existing = views.get(key);
     if (existing) return existing;
+
+    const def = SITE_BY_ID.get(site)!;
 
     const view = new WebContentsView({
         webPreferences: {
-            // Vesktop's preload injects Vencord per webContents, so each account view
-            // gets Vencord independently without touching the injection path.
-            preload: join(__dirname, "preload.js"),
+            // Vesktop's preload injects Vencord; only meaningful on Discord.
+            preload: def.vencord ? join(__dirname, "preload.js") : undefined,
             partition: accountPartition(account.id),
             contextIsolation: true,
             sandbox: true,
             devTools: true,
             spellcheck: true,
-            // keep background accounts receiving messages and notifications
+            // keep background views receiving messages and notifications
             backgroundThrottling: false
         }
     });
 
-    const state: TabView = {
+    const state: ViewState = {
         account,
+        site,
         view,
-        title: account.label,
+        title: def.label,
         unread: 0,
         crashed: false,
         audible: false,
         loaded: false
     };
 
-    tabs.set(account.id, state);
+    views.set(key, state);
 
     setupAccountSession(account.id);
     wireView(state);
-    loadView(state, loadUri);
+
+    if (def.vencord) {
+        state.view.webContents.setUserAgent(BrowserUserAgent);
+        makeWebContentsOpenLinksExternally(state.view.webContents);
+    } else {
+        wirePlainSite(state.view.webContents);
+    }
+
+    loadSite(state, loadUri);
     broadcast();
 
     return state;
 }
 
-function wireView(state: TabView) {
-    const wc = state.view.webContents;
+/** Sites other than Discord: allow same-site + Discord OAuth popups, external for the rest. */
+function wirePlainSite(wc: WebContents) {
+    wc.setWindowOpenHandler(({ url }) => {
+        try {
+            const { hostname } = new URL(url);
+            if (hostname.endsWith("top.gg") || DISCORD_HOSTNAMES.includes(hostname)) return { action: "allow" };
+        } catch {}
 
-    wc.setUserAgent(BrowserUserAgent);
-    makeWebContentsOpenLinksExternally(wc);
+        shell.openExternal(url);
+        return { action: "deny" };
+    });
+}
+
+function wireView(state: ViewState) {
+    const wc = state.view.webContents;
 
     wc.on("page-title-updated", (_e, title) => {
         state.title = title;
@@ -177,29 +246,34 @@ function wireView(state: TabView) {
 
     wc.on("did-finish-load", () => {
         state.loaded = true;
-        updateSplashMessage("");
 
-        if (!appLoadedEmitted) {
-            appLoadedEmitted = true;
-            AppEvents.emit("appLoaded");
+        if (state.site === "discord") {
+            updateSplashMessage("");
+
+            if (!appLoadedEmitted) {
+                appLoadedEmitted = true;
+                AppEvents.emit("appLoaded");
+            }
         }
 
         broadcast();
     });
 
     wc.on("did-navigate", (_e, url, responseCode) => {
+        if (state.site !== "discord") return;
+
         updateSplashMessage("");
 
         // mirror upstream: redirect to the app if Discord sends us somewhere odd
         if (responseCode >= 300) {
             try {
-                if (new URL(url).pathname !== "/app") loadView(state);
+                if (new URL(url).pathname !== "/app") loadSite(state);
             } catch {}
         }
     });
 
     wc.on("render-process-gone", (_e, details) => {
-        console.error(`[multi-vesktop] renderer gone for "${state.account.label}":`, details);
+        console.error(`[multi-vesktop] renderer gone for "${state.account.label}" (${state.site}):`, details);
         state.crashed = true;
         broadcast();
     });
@@ -207,16 +281,20 @@ function wireView(state: TabView) {
 
 const RETRY_DELAY = 1000;
 
-function loadView(state: TabView, uri?: string) {
-    state.view.webContents.loadURL(buildDiscordUrl(uri)).catch((error: any) => {
-        console.log(`[multi-vesktop] failed to load "${state.account.label}", retrying in ${RETRY_DELAY}ms`);
-        updateSplashMessage(`Failed to load Discord: ${error?.code ?? error}`);
-        setTimeout(() => loadView(state, uri), RETRY_DELAY);
+function loadSite(state: ViewState, uri?: string) {
+    const def = SITE_BY_ID.get(state.site)!;
+
+    state.view.webContents.loadURL(def.url(uri)).catch((error: any) => {
+        console.log(
+            `[multi-vesktop] failed to load ${state.site} for "${state.account.label}", retrying in ${RETRY_DELAY}ms`
+        );
+        if (state.site === "discord") updateSplashMessage(`Failed to load Discord: ${error?.code ?? error}`);
+        setTimeout(() => loadSite(state, uri), RETRY_DELAY);
     });
 }
 
 export function layout() {
-    const state = getActiveTab();
+    const state = getActiveView();
     if (!state || !win || win.isDestroyed()) return;
 
     const { width, height } = win.getContentBounds();
@@ -228,12 +306,27 @@ export function layout() {
     });
 }
 
-export function setActive(id: string): boolean {
-    const next = tabs.get(id);
-    if (!next || !win || win.isDestroyed()) return false;
-    if (activeId === id) return true;
+/** Creates the account's Discord view (and only that one). Other sites are lazy. */
+export function createAccountViews(account: Account, discordUri?: string): ViewState {
+    return ensureView(account, "discord", discordUri);
+}
 
-    const current = getActiveTab();
+export function activateAccount(accountId: string): boolean {
+    return setActive(viewKey(accountId, "discord"));
+}
+
+export function setActive(key: string): boolean {
+    const parsed = parseKey(key);
+    if (!parsed || !win || win.isDestroyed()) return false;
+
+    const [accountId, site] = parsed;
+    const account = getAccount(accountId);
+    if (!account) return false;
+
+    const next = ensureView(account, site);
+    if (activeKey === key) return true;
+
+    const current = getActiveView();
     if (current && current !== next) {
         try {
             win.contentView.removeChildView(current.view);
@@ -242,7 +335,7 @@ export function setActive(id: string): boolean {
         }
     }
 
-    activeId = id;
+    activeKey = key;
     win.contentView.addChildView(next.view);
     layout();
 
@@ -252,69 +345,90 @@ export function setActive(id: string): boolean {
     return true;
 }
 
-export function destroyView(id: string) {
-    const state = tabs.get(id);
-    if (!state) return;
+/** Destroys every view belonging to an account. */
+export function destroyAccount(accountId: string) {
+    const prefix = `${accountId}:`;
 
-    if (activeId === id) {
-        if (win && !win.isDestroyed()) {
-            try {
-                win.contentView.removeChildView(state.view);
-            } catch {}
+    for (const [key, state] of [...views.entries()]) {
+        if (!key.startsWith(prefix)) continue;
+
+        if (activeKey === key) {
+            if (win && !win.isDestroyed()) {
+                try {
+                    win.contentView.removeChildView(state.view);
+                } catch {}
+            }
+            activeKey = null;
         }
-        activeId = null;
-    }
 
-    tabs.delete(id);
+        views.delete(key);
 
-    if (!state.view.webContents.isDestroyed()) {
-        state.view.webContents.close();
+        if (!state.view.webContents.isDestroyed()) state.view.webContents.close();
     }
 
     broadcast();
 }
 
 export function updateAccountMeta(account: Account) {
-    const state = tabs.get(account.id);
-    if (!state) return;
-
-    state.account = account;
+    for (const state of views.values()) {
+        if (state.account.id === account.id) state.account = account;
+    }
     broadcast();
 }
 
 export function getAccountIdByWebContents(wc: WebContents): string | null {
-    for (const tab of tabs.values()) {
-        if (tab.view.webContents === wc) return tab.account.id;
+    for (const state of views.values()) {
+        if (state.view.webContents === wc) return state.account.id;
     }
     return null;
 }
 
 export function setAccountIdentity(accountId: string, identity: AccountIdentity) {
-    const state = tabs.get(accountId);
-    if (!state) return;
+    for (const state of views.values()) {
+        if (state.account.id !== accountId || state.site !== "discord") continue;
+        if (JSON.stringify(state.identity) === JSON.stringify(identity)) continue;
 
-    if (JSON.stringify(state.identity) === JSON.stringify(identity)) return;
+        state.identity = identity;
+    }
 
-    state.identity = identity;
     broadcast();
+}
+
+function siteStateFor(accountId: string, site: SiteId): SiteState {
+    const state = views.get(viewKey(accountId, site));
+
+    if (!state) {
+        return {
+            title: SITE_BY_ID.get(site)!.label,
+            unread: 0,
+            crashed: false,
+            audible: false,
+            loaded: false
+        };
+    }
+
+    return {
+        title: state.title,
+        unread: state.unread,
+        favicon: state.favicon,
+        crashed: state.crashed,
+        audible: state.audible,
+        loaded: state.loaded,
+        displayName: state.identity?.displayName,
+        username: state.identity?.username,
+        avatarUrl: state.identity?.avatarUrl
+    };
 }
 
 export function getTabStatePayload(): TabStatePayload {
     return {
-        activeId,
-        tabs: getTabs().map(t => ({
-            id: t.account.id,
-            label: t.account.label,
-            color: t.account.color,
-            title: t.title,
-            unread: t.unread,
-            favicon: t.favicon,
-            crashed: t.crashed,
-            audible: t.audible,
-            loaded: t.loaded,
-            displayName: t.identity?.displayName,
-            username: t.identity?.username,
-            avatarUrl: t.identity?.avatarUrl
+        activeKey,
+        activeAccountId: getActiveAccountId(),
+        tabs: getAccounts().map(account => ({
+            id: account.id,
+            label: account.label,
+            color: account.color,
+            sites: Object.fromEntries(SITES.map(s => [s.id, siteStateFor(account.id, s.id)]))
         }))
     };
 }

@@ -16,17 +16,21 @@ import {
     setLastActive
 } from "./accounts";
 import {
-    createView,
-    destroyView,
+    broadcast,
+    createAccountViews,
+    destroyAccount,
     getAccountIdByWebContents,
     getActiveAccountId,
-    getTabs,
     getTabStatePayload,
+    getViewByKey,
     setAccountIdentity,
     setActive,
-    updateAccountMeta
+    updateAccountMeta,
+    viewKey
 } from "./discordViews";
 import { handle, handleSync } from "./utils/ipcWrappers";
+
+const accountIdOf = (key: string) => key.slice(0, key.lastIndexOf(":"));
 
 handleSync(IpcEvents.TAB_GET_STATE, () => getTabStatePayload());
 
@@ -35,37 +39,38 @@ handle(IpcEvents.ACCOUNT_IDENTITY, (e, identity) => {
     if (accountId) setAccountIdentity(accountId, identity);
 });
 
-handle(IpcEvents.TAB_SELECT, (_e, id: string) => {
-    if (!getAccount(id)) return false;
+handle(IpcEvents.TAB_SELECT, (_e, key: string) => {
+    const accountId = accountIdOf(key);
+    if (!getAccount(accountId)) return false;
 
-    const ok = setActive(id);
-    if (ok) setLastActive(id);
+    const ok = setActive(key);
+    if (ok) setLastActive(accountId);
 
     return ok;
 });
 
 handle(IpcEvents.TAB_CREATE, (_e, label?: string) => {
     const account = createAccount(label);
-    createView(account);
-    setActive(account.id);
+    createAccountViews(account);
+    setActive(viewKey(account.id, "discord"));
     setLastActive(account.id);
 
     return account;
 });
 
-handle(IpcEvents.TAB_CLOSE, (_e, id: string) => {
-    if (!getAccount(id)) return;
+handle(IpcEvents.TAB_CLOSE, (_e, accountId: string) => {
+    if (!getAccount(accountId)) return;
 
-    const wasActive = getActiveAccountId() === id;
-    destroyView(id);
+    const wasActive = getActiveAccountId() === accountId;
+    destroyAccount(accountId);
 
-    const isLast = deleteAccount(id);
+    const isLast = deleteAccount(accountId);
 
     if (isLast) {
         // Never leave the window account-less: drop in a fresh blank account.
         const replacement = createAccount("Account 1");
-        createView(replacement);
-        setActive(replacement.id);
+        createAccountViews(replacement);
+        setActive(viewKey(replacement.id, "discord"));
         setLastActive(replacement.id);
         return;
     }
@@ -73,7 +78,7 @@ handle(IpcEvents.TAB_CLOSE, (_e, id: string) => {
     if (wasActive) {
         const next = getAccounts()[0];
         if (next) {
-            setActive(next.id);
+            setActive(viewKey(next.id, "discord"));
             setLastActive(next.id);
         }
     }
@@ -88,10 +93,9 @@ handle(IpcEvents.TAB_RENAME, (_e, id: string, label: string) => {
 
 handle(IpcEvents.TAB_MOVE, (_e, id: string, index: number) => {
     moveAccount(id, index);
+    broadcast();
 });
 
-handle(IpcEvents.TAB_OPEN_DEVTOOLS, (_e, id: string) => {
-    getTabs()
-        .find(t => t.account.id === id)
-        ?.view.webContents.openDevTools({ mode: "detach" });
+handle(IpcEvents.TAB_OPEN_DEVTOOLS, (_e, key: string) => {
+    getViewByKey(key)?.view.webContents.openDevTools({ mode: "detach" });
 });

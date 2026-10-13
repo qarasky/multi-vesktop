@@ -8,10 +8,7 @@ import { contextBridge, ipcRenderer } from "electron/renderer";
 
 import { IpcEvents } from "../shared/IpcEvents";
 
-export interface TabState {
-    id: string;
-    label: string;
-    color?: string;
+export interface SiteState {
     title: string;
     unread: number;
     favicon?: string;
@@ -23,8 +20,16 @@ export interface TabState {
     avatarUrl?: string;
 }
 
+export interface TabState {
+    id: string;
+    label: string;
+    color?: string;
+    sites: Record<string, SiteState>;
+}
+
 export interface TabStatePayload {
-    activeId: string | null;
+    activeKey: string | null;
+    activeAccountId: string | null;
     tabs: TabState[];
 }
 
