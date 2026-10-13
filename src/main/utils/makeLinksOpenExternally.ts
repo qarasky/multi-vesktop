@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { BrowserWindow, shell } from "electron";
+import { BrowserWindow, shell, type WebContents } from "electron";
 import { DISCORD_HOSTNAMES } from "main/constants";
 
 import { Settings } from "../settings";
@@ -47,8 +47,8 @@ export function handleExternalUrl(url: string, protocol?: string): { action: "de
     return { action: "deny" };
 }
 
-export function makeLinksOpenExternally(win: BrowserWindow) {
-    win.webContents.setWindowOpenHandler(({ url, frameName, features }) => {
+export function makeWebContentsOpenLinksExternally(wc: WebContents) {
+    wc.setWindowOpenHandler(({ url, frameName, features }) => {
         try {
             var { protocol, hostname, pathname, searchParams } = new URL(url);
         } catch {
@@ -67,7 +67,11 @@ export function makeLinksOpenExternally(win: BrowserWindow) {
         return handleExternalUrl(url, protocol);
     });
 
-    win.webContents.on("did-create-window", (win, { frameName }) => {
+    wc.on("did-create-window", (win, { frameName }) => {
         if (frameName.startsWith("DISCORD_")) setupPopout(win, frameName);
     });
+}
+
+export function makeLinksOpenExternally(win: BrowserWindow) {
+    makeWebContentsOpenLinksExternally(win.webContents);
 }

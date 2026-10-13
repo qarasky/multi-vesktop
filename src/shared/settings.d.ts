@@ -6,6 +6,8 @@
 
 import type { Rectangle } from "electron";
 
+import type { Account } from "./accounts";
+
 export interface Settings {
     discordBranch: "stable" | "canary" | "ptb";
     transparencyOption: "none" | "mica" | "tabbed" | "acrylic";
@@ -67,6 +69,10 @@ export interface State {
     linuxAutoStartEnabled?: boolean;
 
     vencordDir?: string;
+
+    /** multi-vesktop: configured accounts and the last active one. */
+    accounts?: Account[];
+    lastActiveAccountId?: string;
 
     updater?: {
         ignoredVersion?: string;

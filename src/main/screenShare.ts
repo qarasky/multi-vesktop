@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { desktopCapturer, session, Streams } from "electron";
+import { desktopCapturer, session, type Session, Streams } from "electron";
 import { release } from "os";
 import type { StreamPick } from "renderer/components/ScreenSharePicker";
 import { IpcCommands, IpcEvents } from "shared/IpcEvents";
@@ -17,7 +17,8 @@ const isWayland =
 
 const supportsLoopbackWithoutChrome = process.platform === "win32" && Number(release().split(".").pop()) >= 19045;
 
-export function registerScreenShareHandler() {
+/** Global capturer thumbnail IPC. Register exactly once. */
+export function registerCapturerHandler() {
     handle(IpcEvents.CAPTURER_GET_LARGE_THUMBNAIL, async (_, id: string) => {
         const sources = await desktopCapturer.getSources({
             types: ["window", "screen"],
@@ -28,8 +29,14 @@ export function registerScreenShareHandler() {
         });
         return sources.find(s => s.id === id)?.thumbnail.toDataURL();
     });
+}
 
-    session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+/**
+ * Display-media (screen share) request handler. Must be registered per session,
+ * so every account partition gets its own call.
+ */
+export function registerScreenShareHandler(ses: Session = session.defaultSession) {
+    ses.setDisplayMediaRequestHandler(async (request, callback) => {
         // request full resolution on wayland right away because we always only end up with one result anyway
         const width = isWayland ? 1920 : 176;
         const sources = await desktopCapturer
