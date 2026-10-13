@@ -242,13 +242,14 @@
                     for (const tab of state.tabs) {
                         const el = document.createElement("div");
                         el.className = "tab" + (tab.id === state.activeId ? " active" : "");
-                        el.title = tab.title || tab.label;
+                        el.title = tab.title || tab.displayName || tab.label;
                         el.style.setProperty("--accent", tab.color || "#5865f2");
 
-                        const avatar = tab.favicon ? document.createElement("img") : document.createElement("div");
+                        const image = tab.avatarUrl || tab.favicon;
+                        const avatar = image ? document.createElement("img") : document.createElement("div");
                         avatar.className = "avatar";
-                        if (tab.favicon) {
-                            avatar.src = tab.favicon;
+                        if (image) {
+                            avatar.src = image;
                             avatar.onerror = () => {
                                 avatar.replaceWith(makeFallbackAvatar(tab, el));
                             };
@@ -267,7 +268,7 @@
 
                         const label = document.createElement("span");
                         label.className = "label";
-                        label.textContent = tab.label;
+                        label.textContent = tab.displayName || tab.label;
                         el.appendChild(label);
 
                         if (tab.crashed) {
@@ -329,7 +330,7 @@
                         lineHeight: "16px",
                         textAlign: "center"
                     });
-                    div.textContent = initial(tab.label);
+                    div.textContent = initial(tab.displayName || tab.label);
                     return div;
                 }
 

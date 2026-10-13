@@ -6,7 +6,7 @@
 
 import { BrowserWindow, WebContents, WebContentsView } from "electron";
 import { join } from "path";
-import { type Account, accountPartition } from "shared/accounts";
+import { type Account, type AccountIdentity, accountPartition } from "shared/accounts";
 import { IpcEvents } from "shared/IpcEvents";
 
 import { setupAccountSession } from "./accountSessions";
@@ -29,6 +29,7 @@ export interface TabView {
     crashed: boolean;
     audible: boolean;
     loaded: boolean;
+    identity?: AccountIdentity;
 }
 
 export interface TabState {
@@ -41,6 +42,9 @@ export interface TabState {
     crashed: boolean;
     audible: boolean;
     loaded: boolean;
+    displayName?: string;
+    username?: string;
+    avatarUrl?: string;
 }
 
 export interface TabStatePayload {
@@ -278,6 +282,23 @@ export function updateAccountMeta(account: Account) {
     broadcast();
 }
 
+export function getAccountIdByWebContents(wc: WebContents): string | null {
+    for (const tab of tabs.values()) {
+        if (tab.view.webContents === wc) return tab.account.id;
+    }
+    return null;
+}
+
+export function setAccountIdentity(accountId: string, identity: AccountIdentity) {
+    const state = tabs.get(accountId);
+    if (!state) return;
+
+    if (JSON.stringify(state.identity) === JSON.stringify(identity)) return;
+
+    state.identity = identity;
+    broadcast();
+}
+
 export function getTabStatePayload(): TabStatePayload {
     return {
         activeId,
@@ -290,7 +311,10 @@ export function getTabStatePayload(): TabStatePayload {
             favicon: t.favicon,
             crashed: t.crashed,
             audible: t.audible,
-            loaded: t.loaded
+            loaded: t.loaded,
+            displayName: t.identity?.displayName,
+            username: t.identity?.username,
+            avatarUrl: t.identity?.avatarUrl
         }))
     };
 }

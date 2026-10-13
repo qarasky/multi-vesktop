@@ -18,6 +18,9 @@ export interface TabState {
     crashed: boolean;
     audible: boolean;
     loaded: boolean;
+    displayName?: string;
+    username?: string;
+    avatarUrl?: string;
 }
 
 export interface TabStatePayload {
