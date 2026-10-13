@@ -9,6 +9,7 @@ import { ipcRenderer } from "electron/renderer";
 import type { IpcMessage, IpcResponse } from "main/ipcCommands";
 import type { Settings } from "shared/settings";
 
+import type { AccountIdentity } from "../shared/accounts";
 import { IpcEvents } from "../shared/IpcEvents";
 import { invoke, sendSync } from "./typedIpc";
 
@@ -27,6 +28,9 @@ ipcRenderer.on(IpcEvents.DEVTOOLS_OPENED, () => onDevtoolsOpen());
 ipcRenderer.on(IpcEvents.DEVTOOLS_CLOSED, () => onDevtoolsClose());
 
 export const VesktopNative = {
+    account: {
+        reportIdentity: (identity: AccountIdentity) => invoke<void>(IpcEvents.ACCOUNT_IDENTITY, identity)
+    },
     app: {
         relaunch: () => invoke<void>(IpcEvents.RELAUNCH),
         getVersion: () => sendSync<void>(IpcEvents.GET_VERSION),

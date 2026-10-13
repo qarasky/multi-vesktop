@@ -29,6 +29,7 @@ import { DEFAULT_HEIGHT, DEFAULT_WIDTH, MIN_HEIGHT, MIN_WIDTH } from "./constant
 import { createView, initDiscordViews, setActive } from "./discordViews";
 import { AppEvents } from "./events";
 import { sendRendererCommand } from "./ipcCommands";
+import { openLogsFolder } from "./logger";
 import { darwinURL } from "./main";
 import { Settings, State, VencordSettings } from "./settings";
 import { createSplashWindow } from "./splash";
@@ -79,7 +80,7 @@ function initMenuBar(win: BrowserWindow) {
 
     const subMenu = [
         {
-            label: "About Vesktop",
+            label: "About Multi Vesktop",
             click: createAboutWindow
         },
         {
@@ -97,6 +98,10 @@ function initMenuBar(win: BrowserWindow) {
                 await clearData(win);
             },
             toolTip: "Vesktop will automatically restart after this operation"
+        },
+        {
+            label: "Open logs folder",
+            click: () => void openLogsFolder()
         },
         {
             label: "Relaunch",

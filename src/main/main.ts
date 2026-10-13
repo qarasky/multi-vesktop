@@ -15,6 +15,7 @@ import { app, BrowserWindow, nativeTheme } from "electron";
 
 import { DATA_DIR } from "./constants";
 import { createFirstLaunchTour } from "./firstLaunch";
+import { attachRendererLogging, initLogger } from "./logger";
 import { createWindows, mainWin } from "./mainWindow";
 import { registerMediaPermissionsHandler } from "./mediaPermissions";
 import { registerCapturerHandler, registerScreenShareHandler } from "./screenShare";
@@ -102,7 +103,10 @@ function init() {
     });
 
     app.whenReady().then(async () => {
-        if (process.platform === "win32") app.setAppUserModelId("dev.vencord.vesktop");
+        initLogger();
+        attachRendererLogging();
+
+        if (process.platform === "win32") app.setAppUserModelId("dev.qarasky.multivesktop");
 
         registerCapturerHandler();
         registerScreenShareHandler();

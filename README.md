@@ -47,6 +47,21 @@ which builds Linux, macOS and Windows on a runner matrix and attaches the artifa
 Signing is off by default; see the comments in that workflow to enable macOS notarization / Windows
 code signing later.
 
+## Logs & debugging
+
+Logs are written to **`Documents/Multi Vesktop/logs`** (falling back to the app's data dir if that folder isn't writable):
+
+- one file per **12-hour session**: `multi-vesktop_<date>_<0000|1200>.log`
+- files older than **3 days** are pruned automatically
+- captures main-process output, uncaught errors, and renderer errors/crashes
+- in the app menu: **Open logs folder**
+
+Verbose logging (including all renderer console output, which is noisy) can be enabled with `--debug`
+or the `MULTI_VESKTOP_DEBUG=1` environment variable.
+
+> Some logged lines are normal Discord/Vencord noise (e.g. `Sentry successfully disabled`, CSP warnings
+> from badge fetches) — not necessarily bugs.
+
 ## Staying in sync with upstream Vesktop
 
 This is a real fork with upstream history preserved. To pull in upstream changes:

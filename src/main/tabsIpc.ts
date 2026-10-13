@@ -18,15 +18,22 @@ import {
 import {
     createView,
     destroyView,
+    getAccountIdByWebContents,
     getActiveAccountId,
     getTabs,
     getTabStatePayload,
+    setAccountIdentity,
     setActive,
     updateAccountMeta
 } from "./discordViews";
 import { handle, handleSync } from "./utils/ipcWrappers";
 
 handleSync(IpcEvents.TAB_GET_STATE, () => getTabStatePayload());
+
+handle(IpcEvents.ACCOUNT_IDENTITY, (e, identity) => {
+    const accountId = getAccountIdByWebContents(e.sender);
+    if (accountId) setAccountIdentity(accountId, identity);
+});
 
 handle(IpcEvents.TAB_SELECT, (_e, id: string) => {
     if (!getAccount(id)) return false;

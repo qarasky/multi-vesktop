@@ -16,6 +16,14 @@ export interface Account {
     color?: string;
 }
 
+/** The signed-in identity of an account, reported from inside its Discord view. */
+export interface AccountIdentity {
+    id: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+}
+
 /** Prefix for the persist: partition of an account session. */
 export const ACCOUNT_PARTITION_PREFIX = "persist:multi-";
 
