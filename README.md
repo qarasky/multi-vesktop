@@ -1,27 +1,68 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# multi-vesktop
+# Multi Vesktop
 
 A fork of [Vesktop](https://github.com/Vencord/Vesktop) that adds **multi-account tabs**: several Discord
 accounts open at once, each in its own isolated session, switchable instantly because every account stays
 loaded in memory.
 
-Built on Vesktop (Electron), with [Vencord](https://vencord.dev) preinstalled.
+Built on Vesktop (Electron 44), with [Vencord](https://vencord.dev) preinstalled.
 
-## Status
+## How it works
 
-Early fork. The upstream Vesktop source is imported verbatim as the base; the multi-account work lives on
-top of it.
+The main window hosts a tab strip. Each account is a `WebContentsView` bound to its own Chromium session
+partition (`persist:multi-<id>`), so multiple Discord logins coexist behind the same `discord.com` origin
+with separate cookies, localStorage, IndexedDB and cache. All views stay loaded, so switching only
+re-attaches the active view — no reload, no reconnect. See [`docs/multi-account.md`](docs/multi-account.md).
 
-- Upstream: `upstream/main` (Vencord/Vesktop)
-- Fork base: imported with full history
+## Install
+
+Download the build for your platform from the [Releases](../../releases) page:
+
+- **Linux** — `.AppImage`, `.deb`, `.rpm`, `.tar.gz`
+- **macOS** — universal `.dmg` / `.zip`
+- **Windows** — `.exe` (NSIS) / `.zip`
+
+> These builds are **unsigned**.
+> - macOS: first launch needs right-click → Open, or
+>   `xattr -dr com.apple.quarantine "/Applications/Multi Vesktop.app"`.
+> - Windows: SmartScreen shows an "unknown publisher" prompt.
+
+## Build from source
+
+```bash
+git clone https://github.com/qarasky/multi-vesktop
+cd multi-vesktop
+pnpm install
+pnpm start          # run
+pnpm package        # or: pnpm package:dir
+```
+
+Requires Node 24+ and pnpm. (Upstream pins pnpm 11.9.0 via `packageManager`; newer pnpm also works.)
+
+## Releases
+
+Pushing a tag like `v0.1.0` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which builds Linux, macOS and Windows on a runner matrix and attaches the artifacts to a GitHub Release.
+Signing is off by default; see the comments in that workflow to enable macOS notarization / Windows
+code signing later.
+
+## Staying in sync with upstream Vesktop
+
+This is a real fork with upstream history preserved. To pull in upstream changes:
+
+```bash
+git remote add upstream https://github.com/Vencord/Vesktop   # once
+git fetch upstream
+git merge upstream/main
+```
+
+Conflicts concentrate in the upstream files we edit (`mainWindow.ts`, `ipc.ts`, `screenShare.ts`,
+`mediaPermissions.ts`, `makeLinksOpenExternally.ts`, `ipcCommands.ts`, `build.mts`, `IpcEvents.ts`,
+`settings.d.ts`). Most of the multi-account logic lives in new files, so it survives upstream churn.
+Merge regularly to keep conflicts small.
 
 ## Licensing
 
-Inherited from Vesktop and Vencord: **GPL-3.0-or-later**. See `LICENSE`. This fork must remain GPL-3.0 and
-publish its source.
-
-## Upstream docs
-
-See the original Vesktop README content in git history for install/build instructions; those build steps
-still apply (`pnpm i`, `pnpm start`, `pnpm package`).
+Inherited from Vesktop and Vencord: **GPL-3.0-or-later**. See [`LICENSE`](LICENSE). This fork must remain
+GPL-3.0 and publish its source.

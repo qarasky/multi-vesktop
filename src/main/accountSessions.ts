@@ -1,10 +1,10 @@
 /*
- * multi-vesktop, a multi-account fork of Vesktop
+ * Vesktop, a desktop app aiming to give you a snappier Discord Experience
  * Copyright (c) 2026 multi-vesktop contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { session, type Session } from "electron";
+import { type Session, session } from "electron";
 import { accountPartition } from "shared/accounts";
 
 import { registerMediaPermissionsHandler } from "./mediaPermissions";

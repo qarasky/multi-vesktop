@@ -3,16 +3,20 @@ name: Release
 on:
     push:
         tags:
-            - v*
+            - "v*"
     workflow_dispatch:
+
+# electron-builder publishes the release with this token.
+permissions:
+    contents: write
 
 jobs:
     release:
         runs-on: ${{ matrix.os }}
 
         strategy:
+            fail-fast: false
             matrix:
-                os: [macos-latest, ubuntu-latest, windows-latest]
                 include:
                     - os: macos-latest
                       platform: mac
@@ -37,23 +41,13 @@ jobs:
             - name: Build
               run: pnpm build
 
-            - name: Run Electron Builder
-              if: ${{ matrix.platform != 'mac' }}
-              run: |
-                  pnpm electron-builder --${{ matrix.platform }} --publish always
+            # These builds are UNSIGNED.
+            #   macOS: first launch needs right-click -> Open, or `xattr -dr com.apple.quarantine "/Applications/Multi Vesktop.app"`.
+            #   Windows: SmartScreen shows an "unknown publisher" prompt.
+            # To sign later, add repository secrets (CSC_LINK, CSC_KEY_PASSWORD and the
+            # APPLE_* notarization vars) and pass them in the env block below, then set
+            # build.mac.notarize back to true in package.json.
+            - name: Package & publish
+              run: pnpm electron-builder --${{ matrix.platform }} --publish always
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Run Electron Builder
-              if: ${{ matrix.platform == 'mac' }}
-              run: |
-                  echo "$API_KEY" > apple.p8
-                  pnpm electron-builder --${{ matrix.platform }} --publish always
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  CSC_LINK: ${{ secrets.APPLE_SIGNING_CERT }}
-                  CSC_KEY_PASSWORD: ${{ secrets.APPLE_SIGNING_CERT_PASSWORD }}
-                  API_KEY: ${{ secrets.APPLE_API_KEY }}
-                  APPLE_API_KEY: apple.p8
-                  APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-                  APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}

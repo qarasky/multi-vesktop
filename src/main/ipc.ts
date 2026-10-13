@@ -15,7 +15,6 @@ import {
     dialog,
     IpcMainInvokeEvent,
     RelaunchOptions,
-    session,
     shell
 } from "electron";
 import { readFileSync, watch } from "fs";

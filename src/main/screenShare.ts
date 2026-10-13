@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { desktopCapturer, session, type Session, Streams } from "electron";
+import { desktopCapturer, type Session, session, Streams } from "electron";
 import { release } from "os";
 import type { StreamPick } from "renderer/components/ScreenSharePicker";
 import { IpcCommands, IpcEvents } from "shared/IpcEvents";

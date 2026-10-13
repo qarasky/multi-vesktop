@@ -1,22 +1,21 @@
 /*
- * multi-vesktop, a multi-account fork of Vesktop
+ * Vesktop, a desktop app aiming to give you a snappier Discord Experience
  * Copyright (c) 2026 multi-vesktop contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { BrowserWindow, WebContents, WebContentsView } from "electron";
 import { join } from "path";
-import type { Account } from "shared/accounts";
-import { accountPartition } from "shared/accounts";
+import { type Account, accountPartition } from "shared/accounts";
 import { IpcEvents } from "shared/IpcEvents";
 
 import { setupAccountSession } from "./accountSessions";
+import { setActiveWebContentsGetter } from "./activeView";
 import { BrowserUserAgent } from "./constants";
 import { AppEvents } from "./events";
 import { Settings } from "./settings";
 import { updateSplashMessage } from "./splash";
 import { makeWebContentsOpenLinksExternally } from "./utils/makeLinksOpenExternally";
-import { setActiveWebContentsGetter } from "./activeView";
 
 /** Height reserved at the top of the window for the tab strip. */
 export const TAB_STRIP_HEIGHT = 40;
