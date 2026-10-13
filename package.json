@@ -200,7 +200,8 @@
         "publish": {
             "provider": "github",
             "owner": "qarasky",
-            "repo": "multi-vesktop"
+            "repo": "multi-vesktop",
+            "releaseType": "release"
         },
         "rpm": {
             "fpm": [
