@@ -180,6 +180,18 @@
                 background: rgba(255, 255, 255, 0.12);
             }
 
+            .tab.dragging {
+                opacity: 0.4;
+            }
+
+            .tab.drop-before {
+                box-shadow: inset 2px 0 0 0 var(--accent, #5865f2);
+            }
+
+            .tab.drop-after {
+                box-shadow: inset -2px 0 0 0 var(--accent, #5865f2);
+            }
+
             #add {
                 -webkit-app-region: no-drag;
                 width: 26px;
@@ -231,6 +243,13 @@
                 }
 
                 let state = { activeId: null, tabs: [] };
+                let dragId = null;
+
+                function clearDropMarkers() {
+                    for (const el of tabsEl.querySelectorAll(".drop-before, .drop-after")) {
+                        el.classList.remove("drop-before", "drop-after");
+                    }
+                }
 
                 function initial(label) {
                     return (label || "?").trim().charAt(0).toUpperCase() || "?";
@@ -313,6 +332,42 @@
                         el.addEventListener("contextmenu", e => {
                             e.preventDefault();
                             api.openDevtools(tab.id);
+                        });
+
+                        el.draggable = true;
+                        el.addEventListener("dragstart", e => {
+                            dragId = tab.id;
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", tab.id);
+                            el.classList.add("dragging");
+                        });
+                        el.addEventListener("dragend", () => {
+                            dragId = null;
+                            el.classList.remove("dragging");
+                            clearDropMarkers();
+                        });
+                        el.addEventListener("dragover", e => {
+                            if (!dragId || dragId === tab.id) return;
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            clearDropMarkers();
+                            const rect = el.getBoundingClientRect();
+                            el.classList.add(e.clientX > rect.left + rect.width / 2 ? "drop-after" : "drop-before");
+                        });
+                        el.addEventListener("drop", e => {
+                            e.preventDefault();
+                            const after = el.classList.contains("drop-after");
+                            clearDropMarkers();
+                            if (!dragId || dragId === tab.id) return;
+
+                            // index among the other tabs, matching moveAccount()'s post-removal splice
+                            const order = state.tabs.map(t => t.id);
+                            const rest = order.filter(id => id !== dragId);
+                            const target = rest.indexOf(tab.id);
+                            if (target === -1) return;
+
+                            api.move(dragId, target + (after ? 1 : 0));
+                            dragId = null;
                         });
 
                         tabsEl.appendChild(el);
