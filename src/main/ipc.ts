@@ -24,6 +24,7 @@ import { release } from "os";
 import { join } from "path";
 
 import { IpcEvents } from "../shared/IpcEvents";
+import { getActiveWebContents } from "./activeView";
 import { setBadgeCount } from "./appBadge";
 import { autoStart } from "./autoStart";
 import { enableHardwareAcceleration } from "./main";
@@ -49,7 +50,7 @@ handle(IpcEvents.GET_VESKTOP_RENDERER_CSS, () => readFile(VESKTOP_RENDERER_CSS_P
 
 if (IS_DEV) {
     watch(VESKTOP_RENDERER_CSS_PATH, { persistent: false }, async () => {
-        mainWin?.webContents.postMessage(
+        getActiveWebContents()?.postMessage(
             IpcEvents.VESKTOP_RENDERER_CSS_UPDATE,
             await readFile(VESKTOP_RENDERER_CSS_PATH, "utf-8")
         );
@@ -126,7 +127,7 @@ handle(IpcEvents.MAXIMIZE, (e, key?: string) => {
 });
 
 handleSync(IpcEvents.SPELLCHECK_GET_AVAILABLE_LANGUAGES, e => {
-    e.returnValue = session.defaultSession.availableSpellCheckerLanguages;
+    e.returnValue = e.sender.session.availableSpellCheckerLanguages;
 });
 
 handle(IpcEvents.SPELLCHECK_REPLACE_MISSPELLING, (e, word: string) => {

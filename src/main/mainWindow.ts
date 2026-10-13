@@ -21,12 +21,14 @@ import { isTruthy } from "shared/utils/guards";
 import { once } from "shared/utils/once";
 import type { SettingsStore } from "shared/utils/SettingsStore";
 
+import { createAccount, getAccounts, setLastActive } from "./accounts";
 import { createAboutWindow } from "./about";
 import { initArRPC } from "./arrpc";
 import { CommandLine } from "./cli";
 import { BrowserUserAgent, DEFAULT_HEIGHT, DEFAULT_WIDTH, MIN_HEIGHT, MIN_WIDTH } from "./constants";
 import { AppEvents } from "./events";
 import { sendRendererCommand } from "./ipcCommands";
+import { createView, initDiscordViews, setActive } from "./discordViews";
 import { darwinURL } from "./main";
 import { Settings, State, VencordSettings } from "./settings";
 import { createSplashWindow, updateSplashMessage } from "./splash";
@@ -36,6 +38,7 @@ import { makeLinksOpenExternally } from "./utils/makeLinksOpenExternally";
 import { applyDeckKeyboardFix, askToApplySteamLayout, isDeckGameMode } from "./utils/steamOS";
 import { downloadVencordFiles, ensureVencordFiles } from "./utils/vencordLoader";
 import { VENCORD_FILES_DIR } from "./vencordFilesDir";
+import { loadView } from "./vesktopStatic";
 
 let isQuitting = false;
 
@@ -355,7 +358,7 @@ function buildBrowserWindowOptions(): BrowserWindowConstructorOptions {
             sandbox: true,
             contextIsolation: true,
             devTools: true,
-            preload: join(__dirname, "preload.js"),
+            preload: join(__dirname, "tabStripPreload.js"),
             spellcheck: true,
             // disable renderer backgrounding to prevent the app from unloading when in the background
             backgroundThrottling: false
@@ -429,41 +432,16 @@ function createMainWindow() {
         initTray(win, q => (isQuitting = q));
 
     initMenuBar(win);
-    makeLinksOpenExternally(win);
     initSettingsListeners(win);
-    initSpellCheck(win);
-    initDevtoolsListeners(win);
-    initStaticTitle(win);
 
-    win.webContents.setUserAgent(BrowserUserAgent);
-
-    // if the open-url event is fired (in index.ts) while starting up, darwinURL will be set. If not fall back to checking the process args (which Windows and Linux use for URI calling.)
-    // win.webContents.session.clearCache().then(() => {
-    loadUrl(darwinURL || process.argv.find(arg => arg.startsWith("discord://")));
-    // });
+    // The main window hosts the tab strip. Each Discord account lives in its own
+    // WebContentsView, created and switched by discordViews.ts.
+    loadView(win, "tabs.html");
 
     return win;
 }
 
 const runVencordMain = once(() => require(join(VENCORD_FILES_DIR, "vencordDesktopMain.js")));
-
-export function loadUrl(uri: string | undefined) {
-    const branch = Settings.store.discordBranch;
-    const subdomain = branch === "canary" || branch === "ptb" ? `${branch}.` : "";
-
-    // we do not rely on 'did-finish-load' because it fires even if loadURL fails which triggers early detruction of the splash
-    mainWin
-        .loadURL(`https://${subdomain}discord.com/${uri ? new URL(uri).pathname.slice(1) || "app" : "app"}`)
-        .then(() => AppEvents.emit("appLoaded"))
-        .catch(error => retryUrl(error.url, error.code));
-}
-
-const retryDelay = 1000;
-function retryUrl(url: string, description: string) {
-    console.log(`retrying in ${retryDelay}ms`);
-    updateSplashMessage(`Failed to load Discord: ${description}`);
-    setTimeout(() => loadUrl(url), retryDelay);
-}
 
 export async function createWindows() {
     const startMinimized = CommandLine.values["start-minimized"];
@@ -479,7 +457,27 @@ export async function createWindows() {
     await ensureVencordFiles();
     runVencordMain();
 
-    mainWin = createMainWindow();
+    const win = (mainWin = createMainWindow());
+    initDiscordViews(win);
+
+    let accounts = getAccounts();
+    if (!accounts.length) {
+        createAccount("Main");
+        accounts = getAccounts();
+    }
+
+    // A discord:// link may have launched us; hand it to the first account.
+    const initialUri = darwinURL || process.argv.find(arg => arg.startsWith("discord://"));
+    let first = true;
+    for (const account of accounts) {
+        createView(account, first ? initialUri : undefined);
+        first = false;
+    }
+
+    const lastActive = State.store.lastActiveAccountId;
+    const preferred = lastActive && accounts.some(a => a.id === lastActive) ? lastActive : accounts[0].id;
+    setActive(preferred);
+    setLastActive(preferred);
 
     AppEvents.on("appLoaded", () => {
         splash?.destroy();
@@ -503,16 +501,5 @@ export async function createWindows() {
         });
     });
 
-    mainWin.webContents.on("did-navigate", (_, url: string, responseCode: number) => {
-        updateSplashMessage(""); // clear the splash message
-
-        // check url to ensure app doesn't loop
-        if (responseCode >= 300 && new URL(url).pathname !== `/app`) {
-            loadUrl(undefined);
-            console.warn(`'did-navigate': Caught bad page response: ${responseCode}, redirecting to main app`);
-        }
-    });
-
-    mainWin.webContents.on("render-process-gone", (event, details) => console.log(details));
     initArRPC();
 }

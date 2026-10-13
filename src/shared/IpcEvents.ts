@@ -62,7 +62,17 @@ export const enum IpcEvents {
     DEVTOOLS_OPENED = "VCD_DEVTOOLS_OPENED",
     DEVTOOLS_CLOSED = "VCD_DEVTOOLS_CLOSED",
 
-    CHOOSE_USER_ASSET = "VCD_CHOOSE_USER_ASSET"
+    CHOOSE_USER_ASSET = "VCD_CHOOSE_USER_ASSET",
+
+    // multi-vesktop: tab strip <-> main process
+    TAB_GET_STATE = "MV_TAB_GET_STATE",
+    TAB_SELECT = "MV_TAB_SELECT",
+    TAB_CREATE = "MV_TAB_CREATE",
+    TAB_CLOSE = "MV_TAB_CLOSE",
+    TAB_RENAME = "MV_TAB_RENAME",
+    TAB_MOVE = "MV_TAB_MOVE",
+    TAB_OPEN_DEVTOOLS = "MV_TAB_OPEN_DEVTOOLS",
+    TAB_STATE_UPDATED = "MV_TAB_STATE_UPDATED"
 }
 
 export const enum UpdaterIpcEvents {

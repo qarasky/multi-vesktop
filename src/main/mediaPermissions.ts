@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { session, systemPreferences } from "electron";
+import { session, type Session, systemPreferences } from "electron";
 
-export function registerMediaPermissionsHandler() {
+export function registerMediaPermissionsHandler(ses: Session = session.defaultSession) {
     if (process.platform !== "darwin") return;
 
-    session.defaultSession.setPermissionRequestHandler(async (_webContents, permission, callback, details) => {
+    ses.setPermissionRequestHandler(async (_webContents, permission, callback, details) => {
         let granted = true;
 
         if ("mediaTypes" in details) {
