@@ -11,6 +11,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $backups = New-Object 'System.Collections.Generic.List[string]'
 
+# Use .NET directly: inherited PowerShell 7 module paths can make Get-FileHash
+# unavailable to the Windows PowerShell 5.1 process used by NSIS.
+function Get-ContentHash([string]$Path) {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = $null
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        return [BitConverter]::ToString($algorithm.ComputeHash($stream))
+    } finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+        $algorithm.Dispose()
+    }
+}
+
 try {
     $directories = @($InstallDir, $MachineInstallDir, $UserInstallDir) |
         Where-Object { $_ } | ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd([IO.Path]::DirectorySeparatorChar) } |
@@ -62,8 +76,8 @@ try {
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
                 [IO.File]::Copy($item.FullName, $target, $false)
                 [IO.File]::SetLastWriteTimeUtc($target, $item.LastWriteTimeUtc)
-                $originalHash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash
-                $copiedHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+                $originalHash = Get-ContentHash $item.FullName
+                $copiedHash = Get-ContentHash $target
                 if ($originalHash -ne $copiedHash) { throw "Backup verification failed: $($item.FullName)" }
             }
         }

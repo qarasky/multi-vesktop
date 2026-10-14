@@ -74,6 +74,28 @@ test("a clean install writes an empty recovery manifest", options, t => {
     assert.deepEqual(JSON.parse(readFileSync(f.manifest, "utf8").replace(/^\uFEFF/, "")), []);
 });
 
+test("backup verification works when the Get-FileHash cmdlet is unavailable", options, t => {
+    const f = fixture(t);
+    mkdirSync(join(f.install, "Data"));
+    writeFileSync(join(f.install, "Data", "state.json"), '{"accounts":[{"id":"account"}]}');
+    const quote = value => "'" + value.replaceAll("'", "''") + "'";
+    const command =
+        "function Get-FileHash { throw 'Hash cmdlet unavailable' }; & " +
+        quote(resolve("build/preserveLegacyData.ps1")) +
+        " -InstallDir " +
+        quote(f.install) +
+        " -ManifestPath " +
+        quote(f.manifest);
+    const result = spawnSync(
+        powershell,
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+        { encoding: "utf8" }
+    );
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const [backup] = JSON.parse(readFileSync(f.manifest, "utf8").replace(/^\uFEFF/, ""));
+    assert.equal(readFileSync(join(backup, "state.json"), "utf8"), '{"accounts":[{"id":"account"}]}');
+});
+
 test("a retried update prefers the newest session snapshot when state.json is unchanged", options, t => {
     const f = fixture(t);
     const data = join(f.install, "Data");
