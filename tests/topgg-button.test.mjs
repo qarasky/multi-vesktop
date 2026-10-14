@@ -51,7 +51,7 @@ let writes = 0;
 app.whenReady().then(async () => {
     if (app.dock) app.dock.hide();
     const win = new BrowserWindow({ width: 800, height: 600, show: false, webPreferences: { contextIsolation: false, nodeIntegration: true, backgroundThrottling: false } });
-    win.webContents.on('console-message', (_event, _level, message) => console.log(message));
+    win.webContents.on('console-message', event => console.log(event.message));
     const bootstrap = () => \
         'const originalAttachShadow = HTMLElement.prototype.attachShadow; HTMLElement.prototype.attachShadow = function(options) { const root = originalAttachShadow.call(this, options); if (this.id === "multi-vesktop-topgg-host") window.buttonShadowRoot = root; return root; }; window.VesktopNative = { topgg: { toggle() { require("electron").ipcRenderer.send("opened") }, getButtonPosition() { return require("electron").ipcRenderer.sendSync("get-position") }, setButtonPosition(p) { return require("electron").ipcRenderer.invoke("save-position", p) }, onButtonPositionChanged(cb) { window.positionChanged = cb } } };';
     const { ipcMain } = require('electron');
@@ -94,9 +94,12 @@ app.whenReady().then(async () => {
     assert.equal(shared.x, 8, 'Other account position updates apply');
     assert.equal(shared.y, 8);
     await input('mouseDown', shared.x + 23, shared.y + 23);
-    await input('mouseMove', -1000, -1000);
+    // Windows discards synthetic input outside the client area. Moving the
+    // cursor to (0, 0) still takes the button's requested origin past the edge.
+    await input('mouseMove', 0, 0);
     const edge = await rect();
-    assert.ok(edge.x >= 0 && edge.y >= 0, 'Drag cannot move button offscreen');
+    assert.equal(edge.x, 8, 'Drag clamps the button to the left inset');
+    assert.equal(edge.y, 8, 'Drag clamps the button to the top inset');
     await input('mouseMove', edge.x + 23, edge.y + 23);
     await input('mouseUp', edge.x + 23, edge.y + 23);
     assert.equal(opens, 2, 'Offscreen drag must not open top.gg');
