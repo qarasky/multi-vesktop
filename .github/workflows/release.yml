@@ -32,7 +32,18 @@ jobs:
 
             # Windows-only: a single NSIS installer (.exe). Unsigned, so
             # SmartScreen shows an "unknown publisher" prompt on first run.
-            - name: Package & publish
+            #
+            # electron-builder publishes a DRAFT release: drafts are mutable, so
+            # every asset lands in one release. We publish it in the next step.
+            - name: Package & publish (draft)
               run: pnpm electron-builder --windows --publish always
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Publish release
+              shell: bash
+              run: |
+                  TAG="v$(node -p "require('./package.json').version")"
+                  gh release edit "$TAG" --draft=false --latest
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
