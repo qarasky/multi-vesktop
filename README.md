@@ -17,16 +17,15 @@ re-attaches the active view — no reload, no reconnect. See [`docs/multi-accoun
 
 ## Install
 
-Download the build for your platform from the [Releases](../../releases) page:
+Download the Windows installer from the [Releases](../../releases) page:
 
-- **Linux** — `.AppImage`, `.deb`, `.rpm`, `.tar.gz`
-- **macOS** — universal `.dmg` / `.zip`
-- **Windows** — `.exe` (NSIS) / `.zip`
+- **Windows** — `Multi-Vesktop-Setup-<version>.exe` (NSIS installer)
 
-> These builds are **unsigned**.
-> - macOS: first launch needs right-click → Open, or
->   `xattr -dr com.apple.quarantine "/Applications/Multi Vesktop.app"`.
-> - Windows: SmartScreen shows an "unknown publisher" prompt.
+> The build is **unsigned**, so SmartScreen shows an "unknown publisher" prompt on the first run
+> (More info → Run anyway).
+
+Releases are **Windows-only** by design. macOS and Linux can still be built from source with
+`pnpm package`.
 
 ## Build from source
 
@@ -42,10 +41,9 @@ Requires Node 24+ and pnpm. (Upstream pins pnpm 11.9.0 via `packageManager`; new
 
 ## Releases
 
-Pushing a tag like `v0.1.0` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
-which builds Linux, macOS and Windows on a runner matrix and attaches the artifacts to a GitHub Release.
-Signing is off by default; see the comments in that workflow to enable macOS notarization / Windows
-code signing later.
+Pushing a tag like `v0.3.0` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which builds a single **Windows NSIS installer** (`.exe`) and attaches it to a GitHub Release.
+The app self-updates from these releases on Windows.
 
 ## Logs & debugging
 

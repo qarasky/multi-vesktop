@@ -12,18 +12,7 @@ permissions:
 
 jobs:
     release:
-        runs-on: ${{ matrix.os }}
-
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: macos-latest
-                      platform: mac
-                    - os: ubuntu-latest
-                      platform: linux
-                    - os: windows-latest
-                      platform: windows
+        runs-on: windows-latest
 
         steps:
             - uses: actions/checkout@v7
@@ -41,13 +30,9 @@ jobs:
             - name: Build
               run: pnpm build
 
-            # These builds are UNSIGNED.
-            #   macOS: first launch needs right-click -> Open, or `xattr -dr com.apple.quarantine "/Applications/Multi Vesktop.app"`.
-            #   Windows: SmartScreen shows an "unknown publisher" prompt.
-            # To sign later, add repository secrets (CSC_LINK, CSC_KEY_PASSWORD and the
-            # APPLE_* notarization vars) and pass them in the env block below, then set
-            # build.mac.notarize back to true in package.json.
+            # Windows-only: a single NSIS installer (.exe). Unsigned, so
+            # SmartScreen shows an "unknown publisher" prompt on first run.
             - name: Package & publish
-              run: pnpm electron-builder --${{ matrix.platform }} --publish always
+              run: pnpm electron-builder --windows --publish always
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
