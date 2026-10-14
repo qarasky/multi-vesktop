@@ -26,7 +26,7 @@ import { createAccount, getAccounts, setLastActive } from "./accounts";
 import { initArRPC } from "./arrpc";
 import { CommandLine } from "./cli";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH, MIN_HEIGHT, MIN_WIDTH } from "./constants";
-import { createAccountViews, initDiscordViews, setActive, viewKey } from "./discordViews";
+import { createView, initDiscordViews, setActive } from "./discordViews";
 import { AppEvents } from "./events";
 import { sendRendererCommand } from "./ipcCommands";
 import { openLogsFolder } from "./logger";
@@ -474,13 +474,13 @@ export async function createWindows() {
     const initialUri = darwinURL || process.argv.find(arg => arg.startsWith("discord://"));
     let first = true;
     for (const account of accounts) {
-        createAccountViews(account, first ? initialUri : undefined);
+        createView(account, first ? initialUri : undefined);
         first = false;
     }
 
     const lastActive = State.store.lastActiveAccountId;
     const preferred = lastActive && accounts.some(a => a.id === lastActive) ? lastActive : accounts[0].id;
-    setActive(viewKey(preferred, "discord"));
+    setActive(preferred);
     setLastActive(preferred);
 
     AppEvents.on("appLoaded", () => {

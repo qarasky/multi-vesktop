@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';"
+        />
+        <title>top.gg</title>
+        <style>
+            :root {
+                --bg: #1e1f22;
+                --border: #111214;
+                --fg: #dbdee1;
+                --fg-dim: #949ba4;
+                --hover: #2b2d31;
+                --accent: #5865f2;
+            }
+            @media (prefers-color-scheme: light) {
+                :root {
+                    --bg: #f2f3f5;
+                    --border: #e3e5e8;
+                    --fg: #2e3338;
+                    --fg-dim: #5c5e66;
+                    --hover: #e9eaec;
+                }
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                margin: 0;
+                height: 36px;
+                overflow: hidden;
+                background: var(--bg);
+                font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+                font-size: 12px;
+                color: var(--fg);
+                user-select: none;
+                -webkit-user-select: none;
+                -webkit-app-region: drag;
+            }
+
+            #bar {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                height: 36px;
+                padding: 0 12px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            #back {
+                -webkit-app-region: no-drag;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                height: 24px;
+                padding: 0 12px;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                background: transparent;
+                color: var(--fg);
+                font: inherit;
+                cursor: pointer;
+            }
+
+            #back:hover {
+                background: var(--hover);
+            }
+
+            #label {
+                color: var(--fg-dim);
+                font-weight: 600;
+                letter-spacing: 0.02em;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="bar">
+            <button id="back">‹ Back to Discord</button>
+            <span id="label">top.gg</span>
+        </div>
+        <script>
+            const api = window.MultiVesktop;
+            document.getElementById("back").addEventListener("click", () => {
+                if (api) api.closeTopgg();
+            });
+        </script>
+    </body>
+</html>

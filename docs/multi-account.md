@@ -57,18 +57,16 @@ keep working). It now loads the **tab strip** instead of Discord:
 | `src/preload/tabStrip.ts` | `contextBridge` API for the strip |
 | `static/views/tabs.html` | The strip UI (self-contained) |
 
-## Sites: more than one view per account
+## top.gg overlay
 
-Each account owns one view per **site**, all sharing that account's session partition:
+Each account can open **top.gg in an in-window overlay** that shares the account's session partition:
 
-| site | what | Vencord? |
-| --- | --- | --- |
-| `discord` | `discord.com/app` | yes |
-| `topgg` | `top.gg` | no (plain page) |
-
-Because they share the partition, **top.gg's "Log in with Discord" sees that account's Discord login** — so
-top.gg is authenticated as the same account. The strip shows two rows: accounts on top, their top.gg views
-below. Discord views are created eagerly; other sites lazily on first activation.
+- A floating **top.gg** button is injected into each Discord view (shadow DOM, so it's isolated).
+- Clicking it shows an overlay: a header bar with **‹ Back to Discord**, and `https://top.gg` below it, in the
+  same partition as that account.
+- Because they share the partition, **top.gg's "Log in with Discord" sees that account's Discord login**, so
+  it is authenticated as the same account.
+- The overlay view is created lazily on first open and kept warm afterwards.
 
 ## Status / roadmap
 
@@ -78,7 +76,7 @@ below. Discord views are created eagerly; other sites lazily on first activation
 - [x] Per-view Discord behaviours (external links, popouts, spellcheck context menu, devtools hooks)
 - [x] Per-account media/screen-share handlers
 - [x] Account identity in tabs (avatar + display name + unread)
-- [x] Extra per-account sites sharing the partition (top.gg)
+- [x] Per-account top.gg overlay (shares the account session)
 - [x] Tab reordering by drag
 - [x] File logging (12h sessions, 3-day retention)
 - [ ] Unread badge aggregation into dock/tray

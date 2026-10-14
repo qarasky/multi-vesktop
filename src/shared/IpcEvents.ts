@@ -75,7 +75,11 @@ export const enum IpcEvents {
     TAB_STATE_UPDATED = "MV_TAB_STATE_UPDATED",
 
     /** Sent from the injected renderer once Discord's user store has the account identity. */
-    ACCOUNT_IDENTITY = "MV_ACCOUNT_IDENTITY"
+    ACCOUNT_IDENTITY = "MV_ACCOUNT_IDENTITY",
+
+    /** Floating top.gg button in the Discord view <-> overlay. */
+    TOPGG_TOGGLE = "MV_TOPGG_TOGGLE",
+    TOPGG_CLOSE = "MV_TOPGG_CLOSE"
 }
 
 export const enum UpdaterIpcEvents {

@@ -16,8 +16,7 @@
                 --fg: #dbdee1;
                 --fg-dim: #949ba4;
                 --badge: #f23f43;
-                --row1: 34px;
-                --row2: 30px;
+                --strip-height: 40px;
             }
             @media (prefers-color-scheme: light) {
                 :root {
@@ -37,7 +36,7 @@
             html,
             body {
                 margin: 0;
-                height: calc(var(--row1) + var(--row2));
+                height: var(--strip-height);
                 overflow: hidden;
                 background: transparent;
                 font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -53,44 +52,26 @@
                 user-select: none;
             }
 
-            .row {
+            #bar {
                 display: flex;
                 align-items: center;
-                justify-content: center;
                 gap: 4px;
+                height: var(--strip-height);
                 padding: 0 8px;
                 background: var(--bar-bg);
-                overflow: hidden;
-            }
-
-            #row1 {
-                height: var(--row1);
                 border-bottom: 1px solid var(--bar-border);
-            }
-
-            #row2 {
-                height: var(--row2);
-                border-bottom: 1px solid var(--bar-border);
-            }
-
-            #row1.darwin {
-                padding-left: 78px;
-            }
-
-            #row1 {
                 -webkit-app-region: drag;
             }
 
-            #row1 .tab,
-            #row1 button {
-                -webkit-app-region: no-drag;
+            #bar.darwin {
+                padding-left: 78px;
             }
 
             #tabs {
                 display: flex;
                 align-items: center;
-                justify-content: center;
                 gap: 4px;
+                flex: 1;
                 min-width: 0;
                 overflow: hidden;
             }
@@ -99,15 +80,17 @@
                 display: flex;
                 align-items: center;
                 gap: 7px;
-                height: 26px;
+                height: 28px;
                 max-width: 190px;
-                min-width: 84px;
+                min-width: 92px;
                 padding: 0 8px;
+                border: 1px solid transparent;
                 border-radius: 6px;
                 cursor: default;
                 color: var(--fg-dim);
                 position: relative;
-                transition: background 0.1s ease;
+                transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+                -webkit-app-region: no-drag;
             }
 
             .tab:hover {
@@ -115,15 +98,10 @@
                 color: var(--fg);
             }
 
-            .tab.current {
-                color: var(--fg);
-                box-shadow: inset 0 -2px 0 0 var(--accent, #5865f2);
-            }
-
             .tab.active {
                 background: var(--tab-active);
                 color: var(--fg);
-                box-shadow: inset 0 -2px 0 0 var(--accent, #5865f2);
+                border-color: var(--accent, #5865f2);
             }
 
             .tab.dragging {
@@ -131,11 +109,11 @@
             }
 
             .tab.drop-before {
-                box-shadow: inset 2px 0 0 0 var(--accent, #5865f2);
+                border-left-color: var(--accent, #5865f2);
             }
 
             .tab.drop-after {
-                box-shadow: inset -2px 0 0 0 var(--accent, #5865f2);
+                border-right-color: var(--accent, #5865f2);
             }
 
             .avatar {
@@ -172,6 +150,8 @@
                 flex: 0 0 auto;
                 width: 14px;
                 text-align: center;
+                font-size: 12px;
+                line-height: 1;
             }
 
             .close {
@@ -199,6 +179,7 @@
             }
 
             #add {
+                -webkit-app-region: no-drag;
                 width: 26px;
                 height: 26px;
                 flex: 0 0 auto;
@@ -214,26 +195,6 @@
             #add:hover {
                 background: var(--tab-hover);
                 color: var(--fg);
-            }
-
-            .site-tab {
-                height: 24px;
-                min-width: 0;
-                max-width: 190px;
-                font-size: 11px;
-                opacity: 0.85;
-            }
-
-            .site-tab.active,
-            .site-tab.current {
-                opacity: 1;
-            }
-
-            .site-dot {
-                width: 10px;
-                height: 10px;
-                border-radius: 3px;
-                flex: 0 0 auto;
             }
 
             .rename {
@@ -261,12 +222,9 @@
         </style>
     </head>
     <body>
-        <div class="row" id="row1">
+        <div id="bar">
             <div id="tabs"></div>
             <button id="add" title="Add account">＋</button>
-        </div>
-        <div class="row" id="row2">
-            <div id="sites"></div>
         </div>
 
         <script>
@@ -276,15 +234,13 @@
                 document.body.innerHTML = '<div class="error-banner">Tab strip failed to initialise (preload missing).</div>';
             } else {
                 const tabsEl = document.getElementById("tabs");
-                const sitesEl = document.getElementById("sites");
                 const addEl = document.getElementById("add");
 
-                if (api.platform === "darwin") document.getElementById("row1").classList.add("darwin");
+                if (api.platform === "darwin") document.getElementById("bar").classList.add("darwin");
 
-                let state = { activeKey: null, activeAccountId: null, tabs: [] };
+                let state = { activeId: null, tabs: [] };
                 let dragId = null;
 
-                const siteOf = (tab, site) => (tab.sites && tab.sites[site]) || {};
                 const initial = s => (s || "?").trim().charAt(0).toUpperCase() || "?";
 
                 function clearDropMarkers() {
@@ -293,33 +249,32 @@
                     }
                 }
 
-                function makeAvatar(tab, size) {
-                    const site = siteOf(tab, "discord");
-                    const image = site.avatarUrl || site.favicon;
+                function makeAvatar(tab) {
+                    const image = tab.avatarUrl || tab.favicon;
 
                     if (image) {
                         const img = document.createElement("img");
                         img.className = "avatar";
                         img.src = image;
                         img.draggable = false;
-                        img.onerror = () => img.replaceWith(makeInitialAvatar(tab, size));
+                        img.onerror = () => img.replaceWith(makeInitialAvatar(tab));
                         return img;
                     }
-                    return makeInitialAvatar(tab, size);
+                    return makeInitialAvatar(tab);
                 }
 
-                function makeInitialAvatar(tab, size) {
+                function makeInitialAvatar(tab) {
                     const div = document.createElement("div");
                     div.className = "avatar";
                     Object.assign(div.style, {
                         background: tab.color || "#5865f2",
                         color: "#fff",
-                        fontSize: size + "px",
+                        fontSize: "10px",
                         fontWeight: "700",
                         lineHeight: "16px",
                         textAlign: "center"
                     });
-                    div.textContent = initial(siteOf(tab, "discord").displayName || tab.label);
+                    div.textContent = initial(tab.displayName || tab.label);
                     return div;
                 }
 
@@ -328,10 +283,6 @@
                     badge.className = "badge";
                     badge.textContent = count > 99 ? "99+" : String(count);
                     return badge;
-                }
-
-                function select(key) {
-                    api.select(key);
                 }
 
                 function startRename(labelEl, id, current) {
@@ -356,45 +307,41 @@
                     });
                     input.addEventListener("blur", () => commit(true));
                     input.addEventListener("click", e => e.stopPropagation());
+                    input.addEventListener("dblclick", e => e.stopPropagation());
                 }
 
                 function render() {
                     tabsEl.textContent = "";
-                    sitesEl.textContent = "";
 
                     for (const tab of state.tabs) {
-                        const discord = siteOf(tab, "discord");
-                        const key = tab.id + ":discord";
-
                         const el = document.createElement("div");
-                        el.className = "tab";
-                        if (state.activeKey === key) el.classList.add("active");
-                        else if (state.activeAccountId === tab.id) el.classList.add("current");
-                        el.title = discord.title || discord.displayName || tab.label;
+                        el.className = "tab" + (tab.id === state.activeId ? " active" : "");
+                        el.title = tab.title || tab.displayName || tab.label;
                         el.style.setProperty("--accent", tab.color || "#5865f2");
                         el.draggable = true;
 
-                        el.appendChild(makeAvatar(tab, 10));
+                        el.appendChild(makeAvatar(tab));
 
                         const label = document.createElement("span");
                         label.className = "label";
-                        label.textContent = discord.displayName || tab.label;
+                        label.textContent = tab.displayName || tab.label;
                         el.appendChild(label);
 
-                        if (discord.crashed) {
+                        if (tab.crashed) {
                             const icon = document.createElement("span");
                             icon.className = "icon";
                             icon.textContent = "⚠";
                             icon.title = "This account crashed";
                             el.appendChild(icon);
-                        } else if (discord.audible) {
+                        } else if (tab.audible) {
                             const icon = document.createElement("span");
                             icon.className = "icon";
                             icon.textContent = "🔊";
+                            icon.title = "Playing audio";
                             el.appendChild(icon);
                         }
 
-                        if (discord.unread > 0) el.appendChild(makeBadge(discord.unread));
+                        if (tab.unread > 0) el.appendChild(makeBadge(tab.unread));
 
                         const close = document.createElement("button");
                         close.className = "close";
@@ -406,7 +353,7 @@
                         });
                         el.appendChild(close);
 
-                        el.addEventListener("click", () => select(key));
+                        el.addEventListener("click", () => api.select(tab.id));
                         el.addEventListener("auxclick", e => {
                             if (e.button === 1) api.close(tab.id).then(refresh);
                         });
@@ -416,7 +363,7 @@
                         });
                         el.addEventListener("contextmenu", e => {
                             e.preventDefault();
-                            api.openDevtools(key);
+                            api.openDevtools(tab.id);
                         });
 
                         el.addEventListener("dragstart", e => {
@@ -456,37 +403,6 @@
                         });
 
                         tabsEl.appendChild(el);
-
-                        // second row: this account's top.gg view
-                        const topgg = siteOf(tab, "topgg");
-                        const siteKey = tab.id + ":topgg";
-
-                        const siteEl = document.createElement("div");
-                        siteEl.className = "tab site-tab";
-                        if (state.activeKey === siteKey) siteEl.classList.add("active");
-                        else if (state.activeAccountId === tab.id) siteEl.classList.add("current");
-                        siteEl.title = `${tab.label} · top.gg`;
-                        siteEl.style.setProperty("--accent", tab.color || "#5865f2");
-
-                        const dot = document.createElement("div");
-                        dot.className = "site-dot";
-                        dot.style.background = tab.color || "#5865f2";
-                        siteEl.appendChild(dot);
-
-                        const siteLabel = document.createElement("span");
-                        siteLabel.className = "label";
-                        siteLabel.textContent = "top.gg";
-                        siteEl.appendChild(siteLabel);
-
-                        if (topgg.unread > 0) siteEl.appendChild(makeBadge(topgg.unread));
-
-                        siteEl.addEventListener("click", () => select(siteKey));
-                        siteEl.addEventListener("contextmenu", e => {
-                            e.preventDefault();
-                            api.openDevtools(siteKey);
-                        });
-
-                        sitesEl.appendChild(siteEl);
                     }
                 }
 

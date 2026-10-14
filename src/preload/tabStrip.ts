@@ -8,7 +8,10 @@ import { contextBridge, ipcRenderer } from "electron/renderer";
 
 import { IpcEvents } from "../shared/IpcEvents";
 
-export interface SiteState {
+export interface TabState {
+    id: string;
+    label: string;
+    color?: string;
     title: string;
     unread: number;
     favicon?: string;
@@ -18,18 +21,11 @@ export interface SiteState {
     displayName?: string;
     username?: string;
     avatarUrl?: string;
-}
-
-export interface TabState {
-    id: string;
-    label: string;
-    color?: string;
-    sites: Record<string, SiteState>;
+    overlayOpen: boolean;
 }
 
 export interface TabStatePayload {
-    activeKey: string | null;
-    activeAccountId: string | null;
+    activeId: string | null;
     tabs: TabState[];
 }
 
@@ -41,6 +37,8 @@ const api = {
     rename: (id: string, label: string) => ipcRenderer.invoke(IpcEvents.TAB_RENAME, id, label) as Promise<void>,
     move: (id: string, index: number) => ipcRenderer.invoke(IpcEvents.TAB_MOVE, id, index) as Promise<void>,
     openDevtools: (id: string) => ipcRenderer.invoke(IpcEvents.TAB_OPEN_DEVTOOLS, id) as Promise<void>,
+    // used by the top.gg overlay header
+    closeTopgg: () => ipcRenderer.invoke(IpcEvents.TOPGG_CLOSE) as Promise<void>,
     onState: (cb: (state: TabStatePayload) => void) => {
         ipcRenderer.on(IpcEvents.TAB_STATE_UPDATED, (_e, state) => cb(state as TabStatePayload));
     },

@@ -31,6 +31,10 @@ export const VesktopNative = {
     account: {
         reportIdentity: (identity: AccountIdentity) => invoke<void>(IpcEvents.ACCOUNT_IDENTITY, identity)
     },
+    topgg: {
+        toggle: () => invoke<void>(IpcEvents.TOPGG_TOGGLE),
+        close: () => invoke<void>(IpcEvents.TOPGG_CLOSE)
+    },
     app: {
         relaunch: () => invoke<void>(IpcEvents.RELAUNCH),
         getVersion: () => sendSync<void>(IpcEvents.GET_VERSION),
