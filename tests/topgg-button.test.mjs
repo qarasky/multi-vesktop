@@ -60,6 +60,10 @@ app.whenReady().then(async () => {
     ipcMain.handle('save-position', (_e, p) => { saved = p; writes++; writeFileSync(${JSON.stringify(join(root, "position.json"))}, JSON.stringify(p)); });
     const load = async () => {
         await win.loadURL('data:text/html,' + encodeURIComponent('<html><body style="margin:0"><button id="send" style="position:fixed;right:16px;bottom:16px">Send</button><script>' + bootstrap() + ${JSON.stringify(renderer)} + '</script></body></html>'));
+        // sendInputEvent requires a focused BrowserWindow on native platforms.
+        win.show();
+        win.focus();
+        win.webContents.focus();
         await new Promise(r => setTimeout(r, 80));
         await win.webContents.executeJavaScript('for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "lostpointercapture", "click"]) window.buttonShadowRoot.querySelector("button").addEventListener(type, event => console.log(JSON.stringify({type, detail:event.detail, pointerType:event.pointerType, x:event.clientX, y:event.clientY, buttons:event.buttons, trusted:event.isTrusted})))');
     };
