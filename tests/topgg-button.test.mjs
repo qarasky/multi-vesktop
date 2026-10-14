@@ -51,6 +51,7 @@ let writes = 0;
 app.whenReady().then(async () => {
     if (app.dock) app.dock.hide();
     const win = new BrowserWindow({ width: 800, height: 600, show: false, webPreferences: { contextIsolation: false, nodeIntegration: true, backgroundThrottling: false } });
+    win.webContents.on('console-message', (_event, _level, message) => console.log(message));
     const bootstrap = () => \
         'const originalAttachShadow = HTMLElement.prototype.attachShadow; HTMLElement.prototype.attachShadow = function(options) { const root = originalAttachShadow.call(this, options); if (this.id === "multi-vesktop-topgg-host") window.buttonShadowRoot = root; return root; }; window.VesktopNative = { topgg: { toggle() { require("electron").ipcRenderer.send("opened") }, getButtonPosition() { return require("electron").ipcRenderer.sendSync("get-position") }, setButtonPosition(p) { return require("electron").ipcRenderer.invoke("save-position", p) }, onButtonPositionChanged(cb) { window.positionChanged = cb } } };';
     const { ipcMain } = require('electron');
@@ -60,6 +61,7 @@ app.whenReady().then(async () => {
     const load = async () => {
         await win.loadURL('data:text/html,' + encodeURIComponent('<html><body style="margin:0"><button id="send" style="position:fixed;right:16px;bottom:16px">Send</button><script>' + bootstrap() + ${JSON.stringify(renderer)} + '</script></body></html>'));
         await new Promise(r => setTimeout(r, 80));
+        await win.webContents.executeJavaScript('for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "lostpointercapture", "click"]) window.buttonShadowRoot.querySelector("button").addEventListener(type, event => console.log(JSON.stringify({type, detail:event.detail, pointerType:event.pointerType, x:event.clientX, y:event.clientY, buttons:event.buttons, trusted:event.isTrusted})))');
     };
     const rect = () => win.webContents.executeJavaScript('(() => { const r = document.getElementById("multi-vesktop-topgg-host").getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight}; })()');
     const input = async (type, x, y) => { win.webContents.sendInputEvent({ type, x: Math.round(x), y: Math.round(y), button: 'left', clickCount: 1 }); await new Promise(r => setTimeout(r, 40)); };
@@ -97,6 +99,7 @@ app.whenReady().then(async () => {
     assert.ok(edge.x >= 0 && edge.y >= 0, 'Drag cannot move button offscreen');
     await input('mouseMove', edge.x + 23, edge.y + 23);
     await input('mouseUp', edge.x + 23, edge.y + 23);
+    assert.equal(opens, 2, 'Offscreen drag must not open top.gg');
     await win.webContents.executeJavaScript('window.buttonShadowRoot.querySelector("button").click()');
     await new Promise(r => setTimeout(r, 40));
     assert.equal(opens, 3, 'Keyboard/programmatic activation is not suppressed after dragging');
