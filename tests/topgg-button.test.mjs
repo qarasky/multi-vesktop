@@ -64,7 +64,13 @@ app.whenReady().then(async () => {
         await win.webContents.executeJavaScript('for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "lostpointercapture", "click"]) window.buttonShadowRoot.querySelector("button").addEventListener(type, event => console.log(JSON.stringify({type, detail:event.detail, pointerType:event.pointerType, x:event.clientX, y:event.clientY, buttons:event.buttons, trusted:event.isTrusted})))');
     };
     const rect = () => win.webContents.executeJavaScript('(() => { const r = document.getElementById("multi-vesktop-topgg-host").getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight}; })()');
-    const input = async (type, x, y) => { win.webContents.sendInputEvent({ type, x: Math.round(x), y: Math.round(y), button: 'left', clickCount: 1 }); await new Promise(r => setTimeout(r, 40)); };
+    let leftButtonDown = false;
+    const input = async (type, x, y) => {
+        if (type === 'mouseDown') leftButtonDown = true;
+        if (type === 'mouseUp') leftButtonDown = false;
+        win.webContents.sendInputEvent({ type, x: Math.round(x), y: Math.round(y), button: 'left', clickCount: 1, modifiers: leftButtonDown ? ['leftbuttondown'] : [] });
+        await new Promise(r => setTimeout(r, 40));
+    };
     await load();
     const initial = await rect();
     const x = initial.x + 23, y = initial.y + 23;
@@ -94,8 +100,7 @@ app.whenReady().then(async () => {
     assert.equal(shared.x, 8, 'Other account position updates apply');
     assert.equal(shared.y, 8);
     await input('mouseDown', shared.x + 23, shared.y + 23);
-    // Windows discards synthetic input outside the client area. Moving the
-    // cursor to (0, 0) still takes the button's requested origin past the edge.
+    // Keep input inside the client area while requesting an origin past the edge.
     await input('mouseMove', 0, 0);
     const edge = await rect();
     assert.equal(edge.x, 8, 'Drag clamps the button to the left inset');
