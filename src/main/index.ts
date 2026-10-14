@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+// Must run before anything reads app.getPath("userData") (constants, settings)
+import "./userDataDir";
+
 import { app } from "electron";
 
 import { CommandLine } from "./cli";

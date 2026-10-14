@@ -1,6 +1,6 @@
 {
     "name": "multi-vesktop",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "private": true,
     "description": "A multi-account fork of Vesktop: several Discord accounts in one window, each in an isolated session",
     "keywords": [],
@@ -175,8 +175,10 @@
             ]
         },
         "nsis": {
-            "include": "build/installer.nsh",
-            "oneClick": false
+            "oneClick": true,
+            "perMachine": true,
+            "allowElevation": true,
+            "deleteAppDataOnUninstall": false
         },
         "win": {
             "icon": "build/icon.ico",

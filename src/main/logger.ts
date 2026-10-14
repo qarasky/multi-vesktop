@@ -240,6 +240,7 @@ export function initLogger() {
         "info",
         `Multi Vesktop v${app.getVersion()} — ${process.platform} ${process.arch}, Electron ${process.versions.electron}, Node ${process.versions.node}`
     );
+    log("info", `app name: ${app.getName()} — userData: ${app.getPath("userData")}`);
     log("info", `log file: ${getFile() ?? "(file logging disabled)"}`);
     log("info", `debug logging: ${isDebugEnabled() ? "on" : "off"}`);
 }
