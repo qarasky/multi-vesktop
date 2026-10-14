@@ -20,7 +20,7 @@
         "start:dev": "pnpm build:dev && electron .",
         "start:watch": "pnpm build:dev && tsx scripts/startWatch.mts",
         "test": "pnpm testStorage && pnpm lint && pnpm testTypes",
-        "testStorage": "node --test tests/*.test.mjs",
+        "testStorage": "node --test --test-concurrency=1 tests/*.test.mjs",
         "testTypes": "tsc --noEmit",
         "watch": "pnpm build --watch",
         "generateMeta": "tsx scripts/utils/generateMeta.mts"

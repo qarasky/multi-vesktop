@@ -105,7 +105,7 @@ app.whenReady().then(async () => {
     assert.equal(shared.y, 8);
     await input('mouseDown', shared.x + 23, shared.y + 23);
     // Keep input inside the client area while requesting an origin past the edge.
-    await input('mouseMove', 0, 0);
+    await input('mouseMove', 5, 5);
     const edge = await rect();
     assert.equal(edge.x, 8, 'Drag clamps the button to the left inset');
     assert.equal(edge.y, 8, 'Drag clamps the button to the top inset');
