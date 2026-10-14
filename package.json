@@ -1,6 +1,6 @@
 {
     "name": "multi-vesktop",
-    "version": "0.3.6",
+    "version": "0.3.7",
     "private": true,
     "description": "A multi-account fork of Vesktop: several Discord accounts in one window, each in an isolated session",
     "keywords": [],

@@ -14,6 +14,7 @@ import { setupAccountSession } from "./accountSessions";
 import { setActiveWebContentsGetter } from "./activeView";
 import { BrowserUserAgent, DISCORD_HOSTNAMES } from "./constants";
 import { AppEvents } from "./events";
+import { setViewLogLabel } from "./logger";
 import { Settings } from "./settings";
 import { updateSplashMessage } from "./splash";
 import { makeWebContentsOpenLinksExternally } from "./utils/makeLinksOpenExternally";
@@ -56,6 +57,7 @@ export interface TabState {
 export interface TabStatePayload {
     activeId: string | null;
     tabs: TabState[];
+    visibleViewLoading: boolean;
 }
 
 const views = new Map<string, ViewState>();
@@ -108,6 +110,18 @@ export function getActiveWebContents(): WebContents | null {
     return getActiveView()?.view.webContents ?? null;
 }
 
+/** Page currently visible beneath the account bar. */
+function getVisibleWebContents(): WebContents | null {
+    return overlayId ? (overlays.get(overlayId)?.webContents ?? null) : getActiveWebContents();
+}
+
+export function reloadVisibleView(): boolean {
+    const contents = getVisibleWebContents();
+    if (!contents || contents.isDestroyed()) return false;
+    contents.reload();
+    return true;
+}
+
 export function getActiveAccountId(): string | null {
     return activeId;
 }
@@ -147,6 +161,7 @@ export function createView(account: Account, loadUri?: string): ViewState {
     };
 
     views.set(account.id, state);
+    setViewLogLabel(view.webContents, `discord:${account.id}`);
 
     setupAccountSession(account.id);
 
@@ -191,7 +206,10 @@ function wireView(state: ViewState) {
 
     wc.on("did-start-loading", () => {
         state.crashed = false;
+        state.loaded = false;
+        broadcast();
     });
+    wc.on("did-stop-loading", () => broadcast());
 
     wc.on("did-finish-load", () => {
         state.loaded = true;
@@ -375,6 +393,7 @@ function ensureHeader(): WebContentsView {
             sandbox: true
         }
     });
+    setViewLogLabel(headerView.webContents, "topgg-header");
 
     headerView.webContents.loadURL("vesktop://static/views/topggHeader.html").catch(e => {
         console.error("[multi-vesktop] failed to load overlay header", e);
@@ -399,6 +418,11 @@ function ensureOverlay(account: Account): WebContentsView {
             backgroundThrottling: false
         }
     });
+
+    setViewLogLabel(view.webContents, `topgg:${account.id}`);
+    view.webContents.on("did-start-loading", () => broadcast());
+    view.webContents.on("did-stop-loading", () => broadcast());
+    view.webContents.on("render-process-gone", () => broadcast());
 
     view.webContents.setUserAgent(BrowserUserAgent);
     view.webContents.setWindowOpenHandler(({ url }) => {
@@ -462,8 +486,10 @@ export function isOverlayOpen(accountId: string) {
 // -------------------------------------------------------------------- payload
 
 export function getTabStatePayload(): TabStatePayload {
+    const visible = getVisibleWebContents();
     return {
         activeId,
+        visibleViewLoading: !!visible && !visible.isDestroyed() && visible.isLoading(),
         tabs: getAccounts().map(account => {
             const state = views.get(account.id);
 

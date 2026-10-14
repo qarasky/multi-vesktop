@@ -72,6 +72,7 @@ export const enum IpcEvents {
     TAB_RENAME = "MV_TAB_RENAME",
     TAB_MOVE = "MV_TAB_MOVE",
     TAB_OPEN_DEVTOOLS = "MV_TAB_OPEN_DEVTOOLS",
+    VIEW_RELOAD = "MV_VIEW_RELOAD",
     TAB_STATE_UPDATED = "MV_TAB_STATE_UPDATED",
 
     /** Sent from the injected renderer once Discord's user store has the account identity. */

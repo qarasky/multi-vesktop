@@ -26,10 +26,10 @@ import { createAccount, getAccounts, setLastActive } from "./accounts";
 import { initArRPC } from "./arrpc";
 import { CommandLine } from "./cli";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH, MIN_HEIGHT, MIN_WIDTH } from "./constants";
-import { createView, initDiscordViews, setActive } from "./discordViews";
+import { createView, initDiscordViews, reloadVisibleView, setActive } from "./discordViews";
 import { AppEvents } from "./events";
 import { sendRendererCommand } from "./ipcCommands";
-import { openLogsFolder } from "./logger";
+import { openLogsFolder, setViewLogLabel } from "./logger";
 import { darwinURL } from "./main";
 import { Settings, State, VencordSettings } from "./settings";
 import { createSplashWindow } from "./splash";
@@ -193,7 +193,19 @@ function initMenuBar(win: BrowserWindow) {
         },
         { role: "fileMenu" },
         { role: "editMenu" },
-        { role: "viewMenu" },
+        {
+            role: "viewMenu",
+            submenu: [
+                { label: "Reload current page", accelerator: "CmdOrCtrl+R", click: () => reloadVisibleView() },
+                { role: "toggleDevTools" },
+                { type: "separator" },
+                { role: "resetZoom" },
+                { role: "zoomIn" },
+                { role: "zoomOut" },
+                { type: "separator" },
+                { role: "togglefullscreen" }
+            ]
+        },
         isDarwin && { role: "windowMenu" }
     ] satisfies MenuItemList;
 
@@ -411,6 +423,7 @@ function createMainWindow() {
     removeVencordSettingsListeners();
 
     const win = (mainWin = new BrowserWindow(buildBrowserWindowOptions()));
+    setViewLogLabel(win.webContents, "account-bar");
 
     win.setMenuBarVisibility(false);
     if (process.platform === "darwin" && Settings.store.nativeTitleBar) win.setWindowButtonVisibility(false);

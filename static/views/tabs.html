@@ -39,7 +39,11 @@
                 height: var(--strip-height);
                 overflow: hidden;
                 background: transparent;
-                font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    "Segoe UI",
+                    sans-serif;
                 font-size: 12px;
                 color: var(--fg);
                 user-select: none;
@@ -89,7 +93,10 @@
                 cursor: default;
                 color: var(--fg-dim);
                 position: relative;
-                transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+                transition:
+                    background 0.1s ease,
+                    border-color 0.1s ease,
+                    color 0.1s ease;
                 -webkit-app-region: no-drag;
             }
 
@@ -178,10 +185,25 @@
                 background: rgba(255, 255, 255, 0.12);
             }
 
-            #add {
+            #controls {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 0 0 auto;
+            }
+
+            #controls .divider {
+                width: 1px;
+                height: 18px;
+                background: var(--fg-dim);
+                opacity: 0.25;
+            }
+
+            #add,
+            #reload {
                 -webkit-app-region: no-drag;
-                width: 26px;
-                height: 26px;
+                width: 28px;
+                height: 28px;
                 flex: 0 0 auto;
                 border: none;
                 border-radius: 6px;
@@ -192,9 +214,53 @@
                 cursor: pointer;
             }
 
-            #add:hover {
+            #reload {
+                display: grid;
+                place-items: center;
+                padding: 0;
+            }
+
+            #add:hover,
+            #reload:hover:not(:disabled) {
                 background: var(--tab-hover);
                 color: var(--fg);
+            }
+
+            #add:focus-visible,
+            #reload:focus-visible {
+                outline: 2px solid #5865f2;
+                outline-offset: 2px;
+            }
+
+            #reload:disabled {
+                opacity: 0.4;
+                cursor: default;
+            }
+
+            #reload.loading svg {
+                animation: reload-spin 1s linear infinite;
+            }
+
+            @keyframes reload-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                #reload.loading svg {
+                    animation: none;
+                }
+            }
+
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                overflow: hidden;
+                clip-path: inset(50%);
+                white-space: nowrap;
             }
 
             .rename {
@@ -224,22 +290,46 @@
     <body>
         <div id="bar">
             <div id="tabs"></div>
-            <button id="add" title="Add account">＋</button>
+            <div id="controls">
+                <button id="add" title="Add account" aria-label="Add account">＋</button>
+                <span class="divider" aria-hidden="true"></span>
+                <button id="reload" title="Reload current page" aria-label="Reload current page" disabled>
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M20 7v5h-5" />
+                        <path d="M20 12a8 8 0 1 0-2.3 5.7M20 12l-2.3-5.7" />
+                    </svg>
+                </button>
+            </div>
+            <span id="reload-status" class="sr-only" role="status"></span>
         </div>
 
         <script>
             const api = window.MultiVesktop;
 
             if (!api) {
-                document.body.innerHTML = '<div class="error-banner">Tab strip failed to initialise (preload missing).</div>';
+                document.body.innerHTML =
+                    '<div class="error-banner">Tab strip failed to initialise (preload missing).</div>';
             } else {
                 const tabsEl = document.getElementById("tabs");
                 const addEl = document.getElementById("add");
+                const reloadEl = document.getElementById("reload");
+                const reloadStatus = document.getElementById("reload-status");
 
                 if (api.platform === "darwin") document.getElementById("bar").classList.add("darwin");
 
-                let state = { activeId: null, tabs: [] };
+                let state = { activeId: null, tabs: [], visibleViewLoading: false };
                 let dragId = null;
+                let reloadPending = false;
 
                 const initial = s => (s || "?").trim().charAt(0).toUpperCase() || "?";
 
@@ -311,6 +401,7 @@
                 }
 
                 function render() {
+                    renderReload();
                     tabsEl.textContent = "";
 
                     for (const tab of state.tabs) {
@@ -411,6 +502,43 @@
                     if (!dragId) render();
                 }
 
+                function renderReload() {
+                    const active = state.tabs.find(tab => tab.id === state.activeId);
+                    const overlay = state.tabs.find(tab => tab.overlayOpen);
+                    const target = overlay
+                        ? "top.gg"
+                        : active
+                          ? `Discord (${active.displayName || active.label})`
+                          : "current page";
+                    const label = `Reload ${target}`;
+                    const shortcut = api.platform === "darwin" ? "⌘R" : "Ctrl+R";
+                    reloadEl.title = `${label} (${shortcut})`;
+                    reloadEl.setAttribute("aria-label", label);
+                    reloadEl.disabled = reloadPending || (!active && !overlay);
+                    reloadEl.classList.toggle("loading", state.visibleViewLoading);
+                    reloadEl.setAttribute("aria-busy", String(state.visibleViewLoading));
+                    reloadStatus.textContent = state.visibleViewLoading ? `Loading ${target}` : "";
+                }
+
+                reloadEl.addEventListener("click", async () => {
+                    reloadPending = true;
+                    renderReload();
+                    let errorMessage = "";
+                    try {
+                        if (!(await api.reload())) errorMessage = "No page available to reload";
+                    } catch (error) {
+                        errorMessage = "Reload failed. Try again.";
+                        console.error("Failed to reload the visible page", error);
+                    } finally {
+                        reloadPending = false;
+                        renderReload();
+                        if (errorMessage) {
+                            reloadStatus.textContent = errorMessage;
+                            reloadEl.title = errorMessage;
+                        }
+                    }
+                });
+
                 addEl.addEventListener("click", async () => {
                     const account = await api.create();
                     await refresh();
@@ -422,6 +550,7 @@
 
                 api.onState(next => {
                     state = next;
+                    renderReload();
                     // Never rebuild the DOM mid-drag: it cancels the drag.
                     if (!dragId) render();
                 });

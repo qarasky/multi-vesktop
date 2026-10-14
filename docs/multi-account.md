@@ -69,6 +69,11 @@ Each account can open **top.gg in an in-window overlay** that shares the account
 - Because they share the partition, **top.gg's "Log in with Discord" sees that account's Discord login**, so
   it is authenticated as the same account.
 - The overlay view is created lazily on first open and kept warm afterwards.
+- The reload control stays at the right of the account bar. It reloads the visible top.gg page
+  while the overlay is open, and the selected Discord account otherwise; Ctrl+R / Cmd+R uses
+  the same target. The tooltip names that target, and the icon indicates loading.
+- All views, including hidden accounts, write verbose console and lifecycle diagnostics silently
+  alongside the main logs. View IDs and account IDs identify the source of each line.
 
 ## Status / roadmap
 

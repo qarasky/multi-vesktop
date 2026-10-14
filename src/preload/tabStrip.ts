@@ -27,6 +27,7 @@ export interface TabState {
 export interface TabStatePayload {
     activeId: string | null;
     tabs: TabState[];
+    visibleViewLoading: boolean;
 }
 
 const api = {
@@ -37,6 +38,7 @@ const api = {
     rename: (id: string, label: string) => ipcRenderer.invoke(IpcEvents.TAB_RENAME, id, label) as Promise<void>,
     move: (id: string, index: number) => ipcRenderer.invoke(IpcEvents.TAB_MOVE, id, index) as Promise<void>,
     openDevtools: (id: string) => ipcRenderer.invoke(IpcEvents.TAB_OPEN_DEVTOOLS, id) as Promise<void>,
+    reload: () => ipcRenderer.invoke(IpcEvents.VIEW_RELOAD) as Promise<boolean>,
     // used by the top.gg overlay header
     closeTopgg: () => ipcRenderer.invoke(IpcEvents.TOPGG_CLOSE) as Promise<void>,
     onState: (cb: (state: TabStatePayload) => void) => {

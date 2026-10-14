@@ -61,11 +61,20 @@ Logs are written to **`Documents/Multi Vesktop/logs`** (falling back to the app'
 
 - one file per **12-hour session**: `multi-vesktop_<date>_<0000|1200>.log`
 - files older than **3 days** are pruned automatically
-- captures main-process output, uncaught errors, and renderer errors/crashes
+- captures main-process output and uncaught errors in the main log
+- silently captures **every view's console output** (all levels), navigation, load failures,
+  crashes, and responsiveness in `multi-vesktop_<date>_<0000|1200>_views.log`
+- includes view IDs and account IDs to distinguish Discord, top.gg, and background accounts
+- buffers view logs and rotates them at **10 MiB**, keeping two backups per 12-hour session;
+  individual messages longer than 16 Ki characters are truncated
 - in the app menu: **Open logs folder**
 
-Verbose logging (including all renderer console output, which is noisy) can be enabled with `--debug`
-or the `MULTI_VESKTOP_DEBUG=1` environment variable.
+Verbose view logging is enabled by default and stays quiet. Use `--debug` or
+`MULTI_VESKTOP_DEBUG=1` to also echo it to the terminal and enable main-process debug logging.
+
+The **reload icon at the right of the account bar** (or **Ctrl+R / Cmd+R**) reloads the page
+currently visible: top.gg when its overlay is open, otherwise the selected Discord account.
+The tooltip names the target and the icon spins while loading. Reload keeps cookies and storage.
 
 > Some logged lines are normal Discord/Vencord noise (e.g. `Sentry successfully disabled`, CSP warnings
 > from badge fetches) — not necessarily bugs.

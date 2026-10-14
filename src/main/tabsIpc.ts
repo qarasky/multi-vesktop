@@ -24,6 +24,7 @@ import {
     getActiveAccountId,
     getTabStatePayload,
     getView,
+    reloadVisibleView,
     setAccountIdentity,
     setActive,
     toggleOverlay,
@@ -33,6 +34,7 @@ import { getTopggButtonPosition, setTopggButtonPosition } from "./topggButtonPos
 import { handle, handleSync } from "./utils/ipcWrappers";
 
 handleSync(IpcEvents.TAB_GET_STATE, () => getTabStatePayload());
+handle(IpcEvents.VIEW_RELOAD, () => reloadVisibleView());
 
 handle(IpcEvents.ACCOUNT_IDENTITY, (e, identity) => {
     const accountId = getAccountIdByWebContents(e.sender);
