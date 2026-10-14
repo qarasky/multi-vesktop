@@ -154,6 +154,9 @@ export function createView(account: Account, loadUri?: string): ViewState {
     makeWebContentsOpenLinksExternally(view.webContents);
     wireView(state);
 
+    safeAdd(view);
+    setVisible(view, false);
+
     loadView(state, loadUri);
     broadcast();
 
@@ -230,46 +233,54 @@ function loadView(state: ViewState, uri?: string) {
     });
 }
 
-// ---------------------------------------------------------------- child views
-
-function detachAll() {
-    if (!win || win.isDestroyed()) return;
-
-    const all: WebContentsView[] = [...views.values()].map(s => s.view);
-    all.push(...overlays.values());
-    if (headerView) all.push(headerView);
-
-    for (const view of all) {
-        try {
-            win.contentView.removeChildView(view);
-        } catch {}
-    }
-}
-
-/** (Re)builds the child stack: active Discord view, then overlay content, then overlay header. */
-function syncChildren() {
-    if (!win || win.isDestroyed()) return;
-
-    detachAll();
-
-    const active = activeId ? views.get(activeId) : null;
-    if (active) safeAdd(active.view);
-
-    const content = overlayId ? overlays.get(overlayId) : null;
-    if (content) {
-        safeAdd(content);
-        if (headerView) safeAdd(headerView);
-    }
-
-    layout();
-}
+// --------------------------------------------------------------- child views
+//
+// Every view is added to the window ONCE and kept there; we only toggle
+// visibility. Removing and re-adding a WebContentsView leaves it blank until
+// something forces a repaint, which is what caused the white screen after
+// closing the top.gg overlay.
 
 function safeAdd(view: WebContentsView) {
+    if (!win || win.isDestroyed()) return;
+
     try {
-        win!.contentView.addChildView(view);
+        win.contentView.addChildView(view);
     } catch (e) {
         console.error("[multi-vesktop] failed to add child view", e);
     }
+}
+
+function safeRemove(view: WebContentsView) {
+    if (!win || win.isDestroyed()) return;
+
+    try {
+        win.contentView.removeChildView(view);
+    } catch {}
+}
+
+function setVisible(view: WebContentsView, visible: boolean) {
+    try {
+        view.setVisible(visible);
+    } catch {}
+}
+
+function forceRepaint(view: WebContentsView | null | undefined) {
+    if (!view || view.webContents.isDestroyed()) return;
+    try {
+        view.webContents.invalidate();
+    } catch {}
+}
+
+/** Shows exactly one thing: the active account's view, or the top.gg overlay. */
+function applyVisibility() {
+    const overlayOpen = overlayId != null;
+
+    for (const [id, state] of views) setVisible(state.view, !overlayOpen && id === activeId);
+    for (const [id, overlay] of overlays) setVisible(overlay, overlayOpen && id === overlayId);
+
+    if (headerView) setVisible(headerView, overlayOpen);
+
+    forceRepaint(overlayOpen ? (overlayId ? overlays.get(overlayId) : null) : getActiveView()?.view);
 }
 
 export function layout() {
@@ -277,16 +288,18 @@ export function layout() {
 
     const { width, height } = win.getContentBounds();
     const top = TAB_STRIP_HEIGHT;
+    const rest = Math.max(0, height - top);
 
-    const active = activeId ? views.get(activeId) : null;
-    active?.view.setBounds({ x: 0, y: top, width, height: Math.max(0, height - top) });
-
-    if (overlayId) {
-        const contentTop = top + OVERLAY_HEADER_HEIGHT;
-
-        overlays.get(overlayId)?.setBounds({ x: 0, y: contentTop, width, height: Math.max(0, height - contentTop) });
-        headerView?.setBounds({ x: 0, y: top, width, height: OVERLAY_HEADER_HEIGHT });
+    for (const state of views.values()) {
+        state.view.setBounds({ x: 0, y: top, width, height: rest });
     }
+
+    const contentTop = top + OVERLAY_HEADER_HEIGHT;
+    for (const overlay of overlays.values()) {
+        overlay.setBounds({ x: 0, y: contentTop, width, height: Math.max(0, height - contentTop) });
+    }
+
+    headerView?.setBounds({ x: 0, y: top, width, height: OVERLAY_HEADER_HEIGHT });
 }
 
 // ------------------------------------------------------------------- accounts
@@ -294,15 +307,11 @@ export function layout() {
 export function setActive(id: string): boolean {
     if (!views.has(id) || !win || win.isDestroyed()) return false;
 
-    // switching accounts always returns you to Discord
     overlayId = null;
-    if (activeId === id) {
-        syncChildren();
-        return true;
-    }
-
     activeId = id;
-    syncChildren();
+
+    applyVisibility();
+    layout();
 
     views.get(id)?.view.webContents.focus();
     broadcast();
@@ -319,11 +328,16 @@ export function destroyAccount(accountId: string) {
     const overlay = overlays.get(accountId);
     overlays.delete(accountId);
 
-    detachAll();
+    if (state) {
+        safeRemove(state.view);
+        if (!state.view.webContents.isDestroyed()) state.view.webContents.close();
+    }
+    if (overlay) {
+        safeRemove(overlay);
+        if (!overlay.webContents.isDestroyed()) overlay.webContents.close();
+    }
 
-    if (state && !state.view.webContents.isDestroyed()) state.view.webContents.close();
-    if (overlay && !overlay.webContents.isDestroyed()) overlay.webContents.close();
-
+    applyVisibility();
     broadcast();
 }
 
@@ -366,6 +380,9 @@ function ensureHeader(): WebContentsView {
         console.error("[multi-vesktop] failed to load overlay header", e);
     });
 
+    safeAdd(headerView);
+    setVisible(headerView, false);
+
     return headerView;
 }
 
@@ -397,6 +414,9 @@ function ensureOverlay(account: Account): WebContentsView {
     overlays.set(account.id, view);
     setupAccountSession(account.id);
 
+    safeAdd(view);
+    setVisible(view, false);
+
     view.webContents.loadURL(OVERLAY_URL).catch(e => console.error("[multi-vesktop] failed to load top.gg", e));
 
     return view;
@@ -410,7 +430,9 @@ export function openOverlay(accountId: string) {
     ensureHeader();
 
     overlayId = accountId;
-    syncChildren();
+
+    applyVisibility();
+    layout();
 
     overlays.get(accountId)?.webContents.focus();
     broadcast();
@@ -420,7 +442,9 @@ export function closeOverlay() {
     if (!overlayId) return;
 
     overlayId = null;
-    syncChildren();
+
+    applyVisibility();
+    layout();
 
     if (activeId) views.get(activeId)?.view.webContents.focus();
     broadcast();
