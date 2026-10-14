@@ -27,6 +27,16 @@ Download the Windows installer from the [Releases](../../releases) page:
 Releases are **Windows-only** by design. macOS and Linux can still be built from source with
 `pnpm package`.
 
+Account data always lives in **`%APPDATA%\multi-vesktop`** on Windows. Portable mode has been
+removed: even an unpacked executable uses this folder. Account IDs and settings are in `state.json`
+and `settings.json`; Discord logins live under `sessionData\Partitions`.
+
+When upgrading an older build that stored data inside the application folder, the installer closes
+the app and makes a verified backup beside the old installation **before** running its uninstaller.
+The new app copies that profile into AppData on first launch, keeping the backup. Existing AppData
+profiles are preserved. If backup or migration fails, the operation stops and retains the original
+data. Startup logs include the actual account and session storage paths.
+
 ## Build from source
 
 ```bash

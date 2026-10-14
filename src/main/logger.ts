@@ -5,8 +5,10 @@
  */
 
 import { app, shell } from "electron";
-import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from "fs";
+import { appendFileSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from "fs";
 import { join } from "path";
+
+import { DATA_DIR, SESSION_DATA_DIR } from "./constants";
 
 /**
  * File logging for support/debugging.
@@ -241,6 +243,12 @@ export function initLogger() {
         `Multi Vesktop v${app.getVersion()} — ${process.platform} ${process.arch}, Electron ${process.versions.electron}, Node ${process.versions.node}`
     );
     log("info", `app name: ${app.getName()} — userData: ${app.getPath("userData")}`);
+    log("info", `account data: ${DATA_DIR} — sessionData: ${SESSION_DATA_DIR}`);
+    try {
+        log("info", `storage initialization: ${readFileSync(`${DATA_DIR}.migration-complete`, "utf8").trim()}`);
+    } catch (error) {
+        log("warn", "Could not read storage initialization record", error);
+    }
     log("info", `log file: ${getFile() ?? "(file logging disabled)"}`);
     log("info", `debug logging: ${isDebugEnabled() ? "on" : "off"}`);
 }

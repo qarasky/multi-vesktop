@@ -5,47 +5,14 @@
  */
 
 import { app } from "electron";
-import { cpSync, existsSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
+import { mkdirSync } from "fs";
+import { join } from "path";
 
 import { CommandLine } from "./cli";
+import { USER_DATA_DIR } from "./userDataDir";
 
-const vesktopDir = dirname(process.execPath);
-
-// A normal Windows install is detected by the presence of the NSIS uninstaller
-// next to the executable. Upstream checks for "Uninstall Vesktop.exe"; our fork
-// ships as "Multi Vesktop", so that check failed and every normal install was
-// treated as portable - writing all data into <install dir>\Data, which the
-// installer wipes on update. Check both names.
-const UNINSTALLER_NAMES = ["Uninstall Multi Vesktop.exe", "Uninstall Vesktop.exe"];
-
-export const PORTABLE =
-    process.platform === "win32" &&
-    !process.execPath.toLowerCase().endsWith("electron.exe") &&
-    !UNINSTALLER_NAMES.some(name => existsSync(join(vesktopDir, name)));
-
-export const DATA_DIR =
-    process.env.VENCORD_USER_DATA_DIR || (PORTABLE ? join(vesktopDir, "Data") : join(app.getPath("userData")));
-
-// One-time migration: earlier builds misdetected a normal install as portable
-// and wrote everything into <install dir>\Data. Move that into userData so the
-// accounts and Discord sessions survive future updates.
-if (process.platform === "win32" && !PORTABLE && !process.env.VENCORD_USER_DATA_DIR) {
-    const legacy = join(vesktopDir, "Data");
-    try {
-        if (existsSync(join(legacy, "state.json")) && !existsSync(join(DATA_DIR, "state.json"))) {
-            console.log("[multi-vesktop] migrating legacy data from", legacy, "to", DATA_DIR);
-            cpSync(legacy, DATA_DIR, { recursive: true });
-        }
-    } catch (e) {
-        console.error("[multi-vesktop] failed to migrate legacy Data directory", e);
-    }
-}
-
-mkdirSync(DATA_DIR, { recursive: true });
-
-export const SESSION_DATA_DIR = join(DATA_DIR, "sessionData");
-app.setPath("sessionData", SESSION_DATA_DIR);
+export const DATA_DIR = USER_DATA_DIR;
+export { SESSION_DATA_DIR } from "./userDataDir";
 
 export const VENCORD_SETTINGS_DIR = join(DATA_DIR, "settings");
 mkdirSync(VENCORD_SETTINGS_DIR, { recursive: true });

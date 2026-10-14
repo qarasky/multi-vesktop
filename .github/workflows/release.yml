@@ -30,6 +30,9 @@ jobs:
             - name: Build
               run: pnpm build
 
+            - name: Verify account storage and installer preservation
+              run: pnpm testStorage
+
             # Windows-only: a single NSIS installer (.exe). Unsigned, so
             # SmartScreen shows an "unknown publisher" prompt on first run.
             #

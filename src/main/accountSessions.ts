@@ -24,6 +24,7 @@ export function setupAccountSession(accountId: string) {
 
     registered.add(partition);
     const ses = session.fromPartition(partition);
+    console.log("[multi-vesktop] account session", partition, "storage:", ses.getStoragePath());
 
     registerMediaPermissionsHandler(ses);
     registerScreenShareHandler(ses);

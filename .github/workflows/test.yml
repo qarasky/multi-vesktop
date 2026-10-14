@@ -8,7 +8,10 @@ on:
             - main
 jobs:
     test:
-        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+        runs-on: ${{ matrix.os }}
 
         steps:
             - uses: actions/checkout@v7
@@ -24,7 +27,18 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Run tests
+              if: runner.os == 'Linux'
               run: pnpm test
+
+            # venmic is Linux-only; Windows still verifies actual Electron sessions
+            # and the PowerShell script executed by the installer.
+            - name: Test Windows storage and installer preservation
+              if: runner.os == 'Windows'
+              run: pnpm testStorage
+
+            - name: Lint Windows build
+              if: runner.os == 'Windows'
+              run: pnpm lint
 
             - name: Test if it compiles
               run: |

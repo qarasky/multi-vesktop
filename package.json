@@ -1,6 +1,6 @@
 {
     "name": "multi-vesktop",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "private": true,
     "description": "A multi-account fork of Vesktop: several Discord accounts in one window, each in an isolated session",
     "keywords": [],
@@ -19,7 +19,8 @@
         "start": "pnpm build && electron .",
         "start:dev": "pnpm build:dev && electron .",
         "start:watch": "pnpm build:dev && tsx scripts/startWatch.mts",
-        "test": "pnpm lint && pnpm testTypes",
+        "test": "pnpm testStorage && pnpm lint && pnpm testTypes",
+        "testStorage": "node --test tests/*.test.mjs",
         "testTypes": "tsc --noEmit",
         "watch": "pnpm build --watch",
         "generateMeta": "tsx scripts/utils/generateMeta.mts"
@@ -175,6 +176,8 @@
             ]
         },
         "nsis": {
+            "guid": "5703248c-79de-57a9-b087-061b96cfed2e",
+            "include": "build/installer.nsh",
             "oneClick": true,
             "perMachine": true,
             "allowElevation": true,
