@@ -29,6 +29,7 @@ import {
     toggleOverlay,
     updateAccountMeta
 } from "./discordViews";
+import { getTopggButtonPosition, setTopggButtonPosition } from "./topggButtonPosition";
 import { handle, handleSync } from "./utils/ipcWrappers";
 
 handleSync(IpcEvents.TAB_GET_STATE, () => getTabStatePayload());
@@ -106,3 +107,6 @@ handle(IpcEvents.TOPGG_TOGGLE, e => {
 
 // "Back to Discord" in the overlay header closes it.
 handle(IpcEvents.TOPGG_CLOSE, () => closeOverlay());
+
+handleSync(IpcEvents.TOPGG_GET_BUTTON_POSITION, () => getTopggButtonPosition());
+handle(IpcEvents.TOPGG_SET_BUTTON_POSITION, (_e, position: unknown) => setTopggButtonPosition(position));

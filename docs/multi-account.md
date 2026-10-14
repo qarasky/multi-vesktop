@@ -62,6 +62,8 @@ keep working). It now loads the **tab strip** instead of Discord:
 Each account can open **top.gg in an in-window overlay** that shares the account's session partition:
 
 - A floating **top.gg** button is injected into each Discord view (shadow DOM, so it's isolated).
+- **Drag the button to move it; click to open.** Its position is shared across account tabs and saved
+  across restarts and updates. It stays within the window when resized and starts above the composer.
 - Clicking it shows an overlay: a header bar with **‹ Back to Discord**, and `https://top.gg` below it, in the
   same partition as that account.
 - Because they share the partition, **top.gg's "Log in with Discord" sees that account's Discord login**, so

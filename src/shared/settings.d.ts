@@ -7,6 +7,7 @@
 import type { Rectangle } from "electron";
 
 import type { Account } from "./accounts";
+import type { TopggButtonPosition } from "./topgg";
 
 export interface Settings {
     discordBranch: "stable" | "canary" | "ptb";
@@ -73,6 +74,7 @@ export interface State {
     /** multi-vesktop: configured accounts and the last active one. */
     accounts?: Account[];
     lastActiveAccountId?: string;
+    topggButtonPosition?: TopggButtonPosition;
 
     updater?: {
         ignoredVersion?: string;

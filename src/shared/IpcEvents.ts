@@ -79,7 +79,10 @@ export const enum IpcEvents {
 
     /** Floating top.gg button in the Discord view <-> overlay. */
     TOPGG_TOGGLE = "MV_TOPGG_TOGGLE",
-    TOPGG_CLOSE = "MV_TOPGG_CLOSE"
+    TOPGG_CLOSE = "MV_TOPGG_CLOSE",
+    TOPGG_GET_BUTTON_POSITION = "MV_TOPGG_GET_BUTTON_POSITION",
+    TOPGG_SET_BUTTON_POSITION = "MV_TOPGG_SET_BUTTON_POSITION",
+    TOPGG_BUTTON_POSITION_CHANGED = "MV_TOPGG_BUTTON_POSITION_CHANGED"
 }
 
 export const enum UpdaterIpcEvents {

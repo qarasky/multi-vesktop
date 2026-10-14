@@ -8,6 +8,7 @@ import type { Node } from "@vencord/venmic";
 import { ipcRenderer } from "electron/renderer";
 import type { IpcMessage, IpcResponse } from "main/ipcCommands";
 import type { Settings } from "shared/settings";
+import type { TopggButtonPosition } from "shared/topgg";
 
 import type { AccountIdentity } from "../shared/accounts";
 import { IpcEvents } from "../shared/IpcEvents";
@@ -33,7 +34,15 @@ export const VesktopNative = {
     },
     topgg: {
         toggle: () => invoke<void>(IpcEvents.TOPGG_TOGGLE),
-        close: () => invoke<void>(IpcEvents.TOPGG_CLOSE)
+        close: () => invoke<void>(IpcEvents.TOPGG_CLOSE),
+        getButtonPosition: () => sendSync<TopggButtonPosition | undefined>(IpcEvents.TOPGG_GET_BUTTON_POSITION),
+        setButtonPosition: (position: TopggButtonPosition) =>
+            invoke<void>(IpcEvents.TOPGG_SET_BUTTON_POSITION, position),
+        onButtonPositionChanged: (cb: (position: TopggButtonPosition) => void) => {
+            ipcRenderer.on(IpcEvents.TOPGG_BUTTON_POSITION_CHANGED, (_e, position: TopggButtonPosition) =>
+                cb(position)
+            );
+        }
     },
     app: {
         relaunch: () => invoke<void>(IpcEvents.RELAUNCH),
